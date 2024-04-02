@@ -1,0 +1,52 @@
+lint-commit-msg (LCM) checks that a Git commit message
+follows a set of formatting and stylistic conventions.
+
+  1. Separate subject from body with a blank line
+  2. Limit the subject line to ~60 characters (72 is the absolute maximum)
+  3. Capitalize the subject line
+  4. Do not end the subject line with a period
+  5. Use the imperative mood in the subject line
+  6. Wrap the body at 72 characters
+  7. Use the body to explain what and why, not how
+
+See https://cbea.ms/git-commit/#seven-rules for details
+about the conventions and the rationale behind them.
+
+Usage: lint-commit-msg [<input file>|-]
+If input file is '-' or is not provided read from stdin.
+
+General settings
+  LCM_INTERACTIVE (always|never|auto, default: auto)
+        LCM_COLOR (always|never|auto, default: auto)
+
+Configuring linting rules
+    LCM_SUBJECT_LINE_MIN_LENGTH (default: 3)
+    LCM_SUBJECT_LINE_MAX_LENGTH (default: 60)
+       LCM_BODY_LINE_MAX_LENGTH (default: 72)
+  LCM_SUBJECT_LINE_PREFIX_REGEX (default: "")
+   LCM_SUBJECT_LINE_PREFIX_HELP (default: "")
+
+Ignoring linting rules (set to "true" to apply)
+  LCM_IGNORE_ALL
+  LCM_IGNORE_SUBJECT_LINE_TOO_SHORT
+  LCM_IGNORE_SUBJECT_LINE_TOO_LONG
+  LCM_IGNORE_SUBJECT_LINE_ENDS_IN_PERIOD
+  LCM_IGNORE_SUBJECT_NOT_CAPITALIZED
+  LCM_IGNORE_INVALID_SUBJECT_LINE_PREFIX
+  LCM_IGNORE_SUBJECT_MOOD
+  LCM_IGNORE_BODY_LINE_TOO_LONG
+  LCM_IGNORE_CONTAINS_TABS
+  LCM_IGNORE_TRAILING_WHITESPACE
+  LCM_IGNORE_MISSING_FINAL_EOL
+  LCM_IGNORE_2ND_LINE_NOT_BLANK
+  LCM_IGNORE_LINE_COUNT_IS_2
+
+Example invocations
+Lint a commit message in message.txt. Use maximum body line length of 80.
+  LCM_BODY_LINE_MAX_LENGTH=80 lint-commit-msg message.txt
+Allow tab characters and long lines in the message body. In this
+example lint-commit-msg is used in Git commit-msg hook.
+  LCM_IGNORE_CONTAINS_TABS=true LCM_IGNORE_BODY_LINE_TOO_LONG=true git commit
+Lint an existing commit message in a Git repository. Don't use colored output.
+lint-commit-msg reads its input (i.e. commit message) from stdin.
+  git log -n1 --format=format:%B HEAD | LCM_COLOR=never lint-commit-msg

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+print_ok_message() {
+    cat <<EOF
+lint-commit-msg: commit message OK
+EOF
+}
+
+expect_linting_error() {
+    exit_code 1
+    stdout_contains "ERROR: commit message not properly formatted"
+}
+
+expect_user_error() {
+    exit_code 2
+}
+
+expect_success() {
+    exit_code 0
+    stderr_empty
+    stdout_contains "$(print_ok_message)"
+    stdout_not_contains "WARN"
+    stdout_not_contains "ERROR"
+}

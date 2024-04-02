@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+test_usage_without_color() {
+    export LCM_COLOR=never
+    call lint-commit-msg -h
+    diff "${TEST_FILE_DIR}/usage-without-color.snapshot" "${STDOUT}" ||
+        fail 'Usage output does not match "snapshot"'
+}
+
+test_usage_with_color() {
+    export LCM_COLOR=always
+    call lint-commit-msg -h
+    diff "${TEST_FILE_DIR}/usage-with-color.snapshot" "${STDOUT}" ||
+        fail 'Usage output does not match "snapshot"'
+}

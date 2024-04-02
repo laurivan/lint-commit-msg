@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never
+}
+
+before_each() {
+    # Default cleanup mode will remove trailing whitespace
+    git init
+    git config commit.cleanup verbatim
+}
+
+test_trailing_ws_in_subject() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables 
+EOF
+
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains "- line 1: trailing whitespace"
+    # stdout_contains_regex "^  LCM_IGNORE_TRAILING_WHITESPACE"
+}
+
+test_trailing_ws_in_body() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+
+This line doesn't have trailing whitespace
+but this one does 
+this one doesn't
+and this one again does. 
+EOF
+
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains "- line 4: trailing whitespace"
+    stdout_contains "- line 6: trailing whitespace"
+    # stdout_contains_regex "^  LCM_IGNORE_TRAILING_WHITESPACE"
+}
+
+test_ignore_trailing_ws() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+
+This line doesn't have trailing whitespace
+but this one does 
+this one doesn't
+and this one again does. 
+EOF
+
+    export LCM_IGNORE_TRAILING_WHITESPACE=true
+    call lint-commit-msg msg.txt
+    expect_success
+}

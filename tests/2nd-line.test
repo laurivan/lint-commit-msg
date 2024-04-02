@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never
+}
+
+test_2nd_line_not_blank() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+This line should be blank.
+EOF
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains "- line 2: should be blank (separates subject line and body)"
+    # stdout_contains_regex "^  LCM_IGNORE_2ND_LINE_NOT_BLANK$"
+}
+
+test_ignore_2nd_line_not_blank() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+This line should be blank.
+EOF
+    export LCM_IGNORE_2ND_LINE_NOT_BLANK=true
+    export LCM_IGNORE_LINE_COUNT_IS_2=true
+    call lint-commit-msg msg.txt
+    expect_success
+}
+
+test_ignore_only_two_lines() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+
+EOF
+
+    # Use 'verbatim' cleanup mode because the default
+    # will remove trailing empty lines.
+    git init
+    git config commit.cleanup verbatim
+
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains "- commit message should be either"
+}

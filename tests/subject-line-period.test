@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables.
+EOF
+    export LCM_COLOR=never
+}
+
+test_no_period() {
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_contains "- line 1: subject line ends in a period (.)"
+    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_LINE_ENDS_IN_PERIOD$"
+}
+
+test_ignore_no_period() {
+    export LCM_IGNORE_SUBJECT_LINE_ENDS_IN_PERIOD=true
+    call lint-commit-msg ../msg.txt
+    expect_success
+    stdout_contains "(intentionally) ignoring error (LCM_IGNORE_SUBJECT_LINE_ENDS_IN_PERIOD=true)"
+}

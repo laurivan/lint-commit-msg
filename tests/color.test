@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+delete redundant SQL tables
+EOF
+}
+
+test_colored_by_default() {
+    # unbuffer makes lint-commit-msg think its output is terminal
+    # which should make the output colored (because LCM_COLOR is not
+    # set and the default is 'auto' which should use colors when
+    # printing to terminal
+    [ -z "${LCM_COLOR}" ] || fail "LCM_COLOR should be null"
+    call unbuffer lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_contains "$(printf "\x1B[0;31mERROR: commit message")"
+}
+
+test_never() {
+    export LCM_COLOR=never
+    call unbuffer lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_not_contains "$(printf "\x1B[0;31mERROR: commit message")"
+}
+
+test_always() {
+    export LCM_COLOR=always
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_contains "$(printf "\x1B[0;31mERROR: commit message")"
+}
+
+test_not_colored_by_default_if_not_terminal() {
+    [ -z "${LCM_COLOR}" ] || fail "LCM_COLOR should be null"
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_not_contains "$(printf "\x1B[0;31mERROR: commit message")"
+}
+
+test_help() {
+    call unbuffer lint-commit-msg -h
+    exit_code 0
+    stdout_contains "$(printf "\x1B[1;37mUsage:")"
+}
+
+test_help_never() {
+    export LCM_COLOR=never
+    call unbuffer lint-commit-msg -h
+    exit_code 0
+    stdout_not_contains "$(printf "\x1B[1;37mUsage:")"
+    stdout_contains "Usage:"
+}

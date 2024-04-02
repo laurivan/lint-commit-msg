@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never
+}
+
+test_input_from_stdin() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+EOF
+    call lint-commit-msg < msg.txt
+    expect_success
+}
+
+test_explicit_stdin() {
+        cat > msg.txt <<EOF
+Delete redundant SQL tables
+EOF
+    call lint-commit-msg - < msg.txt
+    expect_success
+}
+
+test_no_such_input_file() {
+    call lint-commit-msg non-existent.txt
+    expect_user_error
+    stdout_contains "lint-commit-msg: ERROR: no such file or not readable: 'non-existent.txt'"
+}
+
+test_no_such_input_file_empty_string() {
+    call lint-commit-msg ""
+    expect_user_error
+    stdout_contains "lint-commit-msg: ERROR: no such file or not readable: ''"
+}
+
+test_input_file_not_readable() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+EOF
+    chmod a-r msg.txt
+    call lint-commit-msg msg.txt
+    expect_user_error
+    stdout_contains "lint-commit-msg: ERROR: no such file or not readable: 'msg.txt'"
+}

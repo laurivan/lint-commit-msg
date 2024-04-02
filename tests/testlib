@@ -1,0 +1,149 @@
+#!/bin/sh
+
+# A set of shell functions used by testrunner script.
+
+# call() calls the command given as arguments and stores
+# the command's output: stdout, stderr and exit code.
+call() {
+    call_called=true
+    "$@" > "${STDOUT}" 2> "${STDERR}"
+    printf "%d" "$?" > "${EXIT_CODE}"
+    return 0
+}
+
+# fail() marks a test case as failed and optionally prints
+# an error message to the test log.
+fail() {
+    [ -n "$1" ] && printf "%s\n" "$*"
+    lcm_test_status=1
+    print_st
+}
+
+# print_st() prints the current stack trace. It's used by
+# fail() to display the line where a test case assertion
+# has failed.
+print_st() {
+    local i
+    for i in ${!BASH_LINENO[@]}
+    do
+        local source_file="${BASH_SOURCE[${i}]#${PWD}/}"
+        local func_name="${FUNCNAME[${i}]}"
+
+        # Don't print internals that are useless for the user.
+        [ "${func_name}" = "${FUNCNAME}" ] && continue
+        [[ "${source_file}" =~ /testrunner$ ]] && continue
+        [[ "${source_file}" =~ testlib$ ]] && [ "${func_name}" = "fail" ] && continue
+
+        local line_no="${BASH_LINENO[${i}-1]}"
+        echo "  at ${source_file}:${func_name}():${line_no}"
+    done
+}
+
+# To signal a test failure a test case should call fail().
+# This implies that a test case can do assertions such as
+#   [ "${actual}" = "${expected}" ] || fail "Got '${actual}' (expected '${expected}')"
+# To reduce the boilerplate in test cases there are some
+# ready-made assertion functions that are often used. They
+# call fail() internally and thus streamline the test cases.
+# For example, to check that the command under test prints
+# a certain string to stdout one can
+#   stdout_contains "This should be in the output"
+# OR
+#   stdout_contains_regex "Expecting a number here: [0-9]"
+
+# exit_code() checks whether the command invoked using call()
+# returned the expected exit code.
+exit_code() {
+    local expected_exit_code="$1"
+    local actual_exit_code="$(cat "${EXIT_CODE}")"
+    if [ "${actual_exit_code}" -ne "${expected_exit_code}" ]
+    then
+        fail "exit code was ${actual_exit_code} (expected ${expected_exit_code})"
+    fi
+}
+
+# contains() checks whether the given file contains text.
+# The exact behaviour depends on the arguments and the function
+# (name) that is used to call contains() (see the different
+# variations below this function).
+contains() {
+    local funcname="$1"
+    local pattern="$2"
+    local file="$3"
+    local filename="${funcname%%_*}"
+    local grep_mode
+    local regex_string=""
+    if [[ "${funcname}" = *regex ]]
+    then
+        grep_mode="--extended-regexp"
+        regex_string=" regex"
+    else
+        grep_mode="--fixed-strings"
+    fi
+
+    local msg
+    if [[ "${funcname}" = *not* ]]
+    then
+        msg="output (${filename}) contains${regex_string} '${pattern}'\n"
+        if grep --quiet "${grep_mode}" -e "$2" "${file}"
+        then
+            printf "${msg}"
+            echo "----- ${filename} -----"
+            cat "${file}"
+            echo "^^^^^ ${filename} ^^^^^"
+            fail
+        fi
+    else
+        msg="output (${filename}) does not contain${regex_string} '${pattern}'\n"
+        if ! grep --quiet "${grep_mode}" -e "$2" "${file}"
+        then
+            printf "${msg}"
+            echo "----- ${filename} -----"
+            cat "${file}"
+            echo "^^^^^ ${filename} ^^^^^"
+            fail
+        fi
+    fi
+}
+stdout_contains() { contains "${FUNCNAME}" "$1" "${STDOUT}"; }
+stdout_not_contains() { contains "${FUNCNAME}" "$1" "${STDOUT}"; }
+stdout_contains_regex() { contains "${FUNCNAME}" "$1" "${STDOUT}"; }
+stdout_not_contains_regex() { contains "${FUNCNAME}" "$1" "${STDOUT}"; }
+stderr_contains() { contains "${FUNCNAME}" "$1" "${STDERR}"; }
+stderr_not_contains() { contains "${FUNCNAME}" "$1" "${STDERR}"; }
+stderr_contains_regex() { contains "${FUNCNAME}" "$1" "${STDERR}"; }
+stderr_not_contains_regex() { contains "${FUNCNAME}" "$1" "${STDERR}"; }
+
+# empty() checks if a file is empty. The exact behaviour
+# depends on the arguments and the function (name) that
+# is used to call contains() (see the different variations
+# below this function).
+empty() {
+    local funcname="$1"
+    local file="$2"
+    local filename="${funcname%%_*}"
+
+    local not_string
+    local oper
+    if [[ "${funcname}" = *not* ]]
+    then
+        oper="-eq"
+        not_string=""
+    else
+        oper="-gt"
+        not_string=" not"
+    fi
+
+    if [ "$(cat "${file}" | wc -c)" "${oper}" 0 ]
+    then
+        echo "${filename} is${not_string} empty"
+        echo ------
+        cat "${file}"
+        echo ------
+        fail
+    fi
+}
+stdout_empty() { empty "${FUNCNAME}" "${STDOUT}"; }
+stderr_empty() { empty "${FUNCNAME}" "${STDERR}"; }
+stdout_not_empty() { empty "${FUNCNAME}" "${STDOUT}"; }
+stderr_not_empty() { empty "${FUNCNAME}" "${STDERR}"; }

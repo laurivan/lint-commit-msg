@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+invalid commit message (subject not capitalized)
+EOF
+    export LCM_COLOR=never
+}
+
+test_never() {
+    export LCM_INTERACTIVE=never
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_not_contains "Continue anyway?"
+}
+
+test_false() {
+    export LCM_INTERACTIVE=false
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_not_contains "Continue anyway?"
+}
+
+# lint-commit-msg run standalone (i.e. not within Git commit)
+# and with the default mode 'auto' for interactivity.
+test_default_standalone() {
+    unset LCM_INTERACTIVE # Ensure this is unset.
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_not_contains "Continue anyway?"
+}
+
+test_default_commit() {
+    unset LCM_INTERACTIVE # Ensure this is unset.
+
+    git init
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1"
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    cat > expect.cmd <<EOF
+set timeout -1
+spawn git commit --file ../msg.txt
+
+expect "Continue anyway? "
+send -- "no\n"
+
+expect eof
+EOF
+
+    echo a > a.txt; git add a.txt;
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway?"
+    stdout_contains "Aborting commit!"
+    stdout_contains "Commit message saved in .git/lint-commit-msg.MSG"
+}
+
+test_never_commit() {
+    export LCM_INTERACTIVE=never
+
+    git init
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1"
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    echo a > a.txt; git add a.txt;
+    call git commit --file ../msg.txt
+
+    exit_code 1
+    # git seems to redirect hook's stdout to stderr
+    stderr_contains "ERROR: commit message not properly formatted"
+    stderr_contains "- line 1: subject not capitalized"
+    stderr_not_contains "Continue anyway?"
+    stderr_contains "Aborting commit!"
+    stderr_contains "Commit message saved in .git/lint-commit-msg.MSG"
+}
+
+test_always() {
+    export LCM_INTERACTIVE=always
+
+    cat > expect.cmd <<EOF
+set timeout -1
+spawn lint-commit-msg ../msg.txt
+
+expect "Continue anyway? "
+send -- "no\n"
+
+expect eof
+EOF
+
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway?"
+}
+
+test_true() {
+    export LCM_INTERACTIVE=true
+
+    cat > expect.cmd <<EOF
+set timeout -1
+spawn lint-commit-msg ../msg.txt
+
+expect "Continue anyway? "
+send -- "no\n"
+
+expect eof
+EOF
+
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway?"
+}

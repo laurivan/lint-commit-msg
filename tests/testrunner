@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+sa_short_description="run unit tests written as Bash functions"
+sa_long_description=(
+"testrunner is a simple test runner that reads 'test suites' i.e. text files containing test cases written as Bash functions. The test case functions are named 'test_xxx'. The text file can optionally contain any combination of functions named 'before_all', 'after_all', 'before_each', and 'after_each' which are run before any test case, after all test cases, before each test case, and after each test case respectively."
+"Each test case is executed in a subshell and thus variables declared or modified within a test case cannot be seen by other test cases. Variables declared in before_all function can be seen and modified by all test cases (but the modifications are not visible to other test cases)."
+
+"testrunner creates a 'target' directory to hold resources created by test cases. For every test file a 'suite directory' is created under target directory. 'before_all' and 'after_all' are executed in the suite directory. For each test case a 'test case directory' is creatd under suite directory. 'before_each', 'after_each', and the test case function itself are executed in the test case directory."
+)
+
+log_align_level=true
+# -------------------------------- simpleargs --------------------------------
+. "${SIMPLEARGS}" || { echo "Error loading '${SIMPLEARGS}'" >&2; exit 1; }
+
+sa_parse "$0" \
+         --fail-immediately @doc="Stop running tests as soon as a test case fails." \
+         --log-level OFF,ERROR,WARN,INFO,CONFIG,FINE @varname=tmp_log_level @default=INFO \
+         @doc="Log level, allowed values: @{v} (default: @{d})." \
+         -t/--target-dir arg @default=target \
+         @doc="Directory to hold resources created by test cases (default: @{d}); created if doesn't exist already." \
+         "<test file>..." @varname=test_files @@glob "*.test" @@file \
+         @doc="Test suite files with .test suffix containing test case functions."
+sa_end_parse $?; sa_process "$@"; sa_end_process $?; eval "set -- ${sa_args}"
+# ----------------------------------------------------------------------------
+
+log_level=${tmp_log_level}
+test_case_prefix='test_'
+
+mkdir -p "${target_dir}"
+absolute_target_dir=$(realpath "${target_dir}")
+if ! [ -d "${absolute_target_dir}" ]
+then
+    log ERROR "Could not get absolute target dir"
+    exit 1
+fi
+
+. testlib
+
+# filter_functions() prints shell functions matching the given pattern.
+# Usage:
+#   filter_functions <grep arguments>
+# Examples:
+#   filter_functions ^test_
+#   filter_functions -E 'test_(x|y)'
+filter_functions() {
+    declare -F | sed 's/^declare -f //' | grep "$@"
+}
+
+run_func_if_exists() {
+    local func="$1"
+    if [ "$(type -t "${func}")" = "function" ]
+    then
+        "${func}" || {
+            log ERROR "${func} returned code $?"
+            return
+        }
+    fi
+}
+
+run_test_file() {
+    test_file="$1"
+    cat "${test_file}" |
+        grep -E '^(function )?test_[-A-Za-z0-9_]*' |
+        sed -E -e 's/^function //' -e 's/[( ].*//' |
+        sort |
+        uniq --repeated |
+        grep -E '.+' &&
+        log WARN "Duplicate functions in '${test_file}' (see above)"
+    (
+        TEST_FILE="${test_file}"
+        TEST_FILE_BASENAME="$(basename -s .test "${TEST_FILE}")"
+        TEST_FILE_DIR="$(realpath "$(dirname "${TEST_FILE}")")"
+        log_vars CONFIG "${!LCM_@}"
+
+        unset -f before_all before_each after_all after_each $(filter_functions "^${test_case_prefix}")
+        . "${TEST_FILE}"
+        if [ "$(filter_functions "^${test_case_prefix}" | wc -l)" -eq 0 ]
+        then
+            log CONFIG "No test cases in ${TEST_FILE}"
+            exit 0
+        fi
+
+        log CONFIG "Running ${TEST_FILE}..."
+        # Create 'suite dir' and cd into it.
+        test_output_dir="${target_dir}/${TEST_FILE_BASENAME}"
+        rm -rf "${test_output_dir}"
+        mkdir "${test_output_dir}"
+        cd "${test_output_dir}"
+
+        run_func_if_exists before_all >test.log 2>&1 || exit 19
+        for test_function in $(filter_functions "^${test_case_prefix}")
+        do
+            TEST_CASE="${test_function#${test_case_prefix}}"
+            mkdir "${TEST_CASE}"
+            (
+                cd "${TEST_CASE}"
+                TEST_CASE_DIR="${PWD}"
+                > test.log
+                run_func_if_exists before_each >> "${TEST_CASE_DIR}/test.log" 2>&1 || exit 19
+
+                lcm_test_status=0
+                call_called=false
+                export STDOUT="${TEST_CASE_DIR}/stdout.txt"
+                export STDERR="${TEST_CASE_DIR}/stderr.txt"
+                export EXIT_CODE="${TEST_CASE_DIR}/exit_code.txt"
+
+                "${test_function}" >> "${TEST_CASE_DIR}/test.log" 2>&1
+
+                run_func_if_exists after_each >> "${TEST_CASE_DIR}/test.log" 2>&1 || exit 19
+                log INFO "Executed ${TEST_FILE_BASENAME}.${TEST_CASE}" ""
+                if [ "${lcm_test_status}" -eq 0 ]
+                then
+                    log_display_level=false log INFO "  OK"
+                else
+                    log_display_level=false log ERROR "  FAIL"
+                    if [ "${call_called}" = "false" ]
+                    then
+                        echo "WARN: 'call' was not called as part of test case"
+                    fi
+                    cat "${TEST_CASE_DIR}/test.log"
+                    touch fail
+
+                    [ -h "${absolute_target_dir}/failed" ] && rm "${absolute_target_dir}/failed"
+                    ln -s "${TEST_CASE_DIR}" "${absolute_target_dir}/failed"
+                    echo
+
+                    [ "${fail_immediately}" = "true" ] && exit 50
+                fi
+                :
+            ) || exit
+        done
+        run_func_if_exists after_all >>test.log 2>&1 || exit 19
+        :
+    )
+    local exit_code=$?
+    return "${exit_code}"
+}
+
+for test_file in "${test_files[@]}"
+do
+    run_test_file "${test_file}" || exit
+done

@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never LCM_INTERACTIVE=never
+}
+
+before_each() {
+    git init
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1"
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    echo a > a.txt
+    git add a.txt
+}
+
+test_backup_message_on_linting_error() {
+    cat > msg.txt <<EOF
+update database schema
+EOF
+    call git commit --file msg.txt
+    exit_code 1
+    # git seems to redirect hook's stdout to stderr
+    stderr_contains "ERROR: commit message not properly formatted"
+
+    [ -f .git/lint-commit-msg.MSG ] ||
+        fail "Commit message was not backed up to .git/lint-commit-msg.MSG"
+    diff .git/lint-commit-msg.MSG msg.txt ||
+        fail "Backed up commit message is different from the original."
+}
+
+test_backup_message_on_linting_error_other_dir() {
+    cat > msg.txt <<EOF
+update database schema
+EOF
+    mkdir sub
+    cd sub
+    call git commit --file ../msg.txt
+    exit_code 1
+    # git seems to redirect hook's stdout to stderr
+    stderr_contains "ERROR: commit message not properly formatted"
+
+    cd ..
+    [ -f .git/lint-commit-msg.MSG ] ||
+        fail "Commit message was not backed up to .git/lint-commit-msg.MSG"
+    diff .git/lint-commit-msg.MSG msg.txt ||
+        fail "Backed up commit message is different from the original."
+}
+
+test_no_backup_message_on_success() {
+    cat > msg.txt <<EOF
+Update database schema
+EOF
+    call git commit --file msg.txt
+    exit_code 0
+
+    [ -f .git/lint-commit-msg.MSG ] && fail "Should not backup commit message on success"
+}
+
+test_delete_old_backup_on_success() {
+    cat > msg.txt <<EOF
+Update database schema
+EOF
+    echo "Old message" > .git/lint-commit-msg.MSG
+
+    call git commit --file msg.txt
+    exit_code 0
+    [ -f .git/lint-commit-msg.MSG ] && fail "Old backup message not deleted on success."
+}
+
+test_delete_old_backup_on_success_other_dir() {
+    cat > msg.txt <<EOF
+Update database schema
+EOF
+    echo "Old message" > .git/lint-commit-msg.MSG
+
+    mkdir sub
+    cd sub
+    call git commit --file ../msg.txt
+    exit_code 0
+    cd ..
+    [ -f .git/lint-commit-msg.MSG ] && fail "Old backup message not deleted on success."
+}
+
+test_no_delete_old_backup_if_not_committing() {
+    cat > msg.txt <<EOF
+Update database schema
+EOF
+    echo "Old message" > .git/lint-commit-msg.MSG
+
+    call lint-commit-msg msg.txt
+    expect_success
+    [ -f .git/lint-commit-msg.MSG ] || fail "Backup shouldn't be deleted if not committing."
+}

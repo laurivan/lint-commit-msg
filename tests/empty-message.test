@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never
+
+    git init
+    git config commit.cleanup verbatim
+}
+
+# Empty message is okay because it's something that the user wanted
+# explicitly i.e. the user has used --allow-empty-message (otherwise
+# Git will prevent the commit).
+test_empty_commit_message() {
+    touch msg.txt
+    call lint-commit-msg msg.txt
+    expect_success
+}
+
+# 0 lines but some content (i.e. EOL is missing)
+test_almost_empty() {
+    printf "Message without EOL" > msg.txt
+    call lint-commit-msg msg.txt
+    expect_linting_error
+}

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never
+}
+
+test_prefix_ok() {
+    cat > msg.txt <<EOF
+fix: Make tooltips wider on large screens
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test): '
+    call lint-commit-msg msg.txt
+    expect_success
+}
+
+test_prefix_invalid() {
+    cat > msg.txt <<EOF
+fiz: Make tooltips wider on large screens
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test): '
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains "- line 1: subject line does not match regex: '^(feat|fix|docs|test): '"
+    # stdout_contains_regex "^  LCM_IGNORE_INVALID_SUBJECT_LINE_PREFIX$"
+}
+
+test_prefix_invalid_custom_help_message() {
+    cat > msg.txt <<EOF
+fiz: Make tooltips wider on large screens
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test): '
+    export LCM_SUBJECT_LINE_PREFIX_HELP="Subject should start with type e.g. 'feat'"
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains_regex "^- line 1: Subject should start with type e.g. 'feat'$"
+    stdout_not_contains "subject line does not match regex"
+}
+
+# If the prefix regex does not match the subject line it's pointless to raise
+# an error about subject capitalization (or mood) because we don't even know
+# which word to check.
+test_no_capitalization_check_if_prefix_fails() {
+    cat > msg.txt <<EOF
+fiz: Make tooltips wider on large screens
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test): '
+     call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains_regex "^- line 1: subject line does not match regex"
+    stdout_not_contains_regex "^- line 1: .* not capitalized$"
+}
+
+test_no_mood_check_if_prefix_fails() {
+    cat > msg.txt <<EOF
+docs Add usage instructions for test framework
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test): '
+    export LCM_SUBJECT_LINE_PREFIX_HELP="Subject should start with type e.g. 'feat'"
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains_regex "^- line 1: Subject should start with type e.g. 'feat'$"
+    stdout_not_contains "subject line does not match regex"
+    stdout_not_contains_regex "^- line 1: .* not in imperative mood"
+    stdout_not_contains_regex "^- line 1: .* not capitalized"
+}
+
+test_prefix_and_ignore_subject_capitalization() {
+    cat > msg.txt <<EOF
+fix: make tooltips wider on large screens
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test): '
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains '- line 1: subject "make tooltips wider on large screens" not capitalized'
+}
+
+test_invalid_prefix_regex() {
+    cat > msg.txt <<EOF
+docs: make tooltips wider on large screens
+
+An overlong line that shouldn't raise an error (because the script should exit upon invalid regex).
+EOF
+
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|fix|docs|test: ' # Missing closing )
+    call lint-commit-msg msg.txt
+    expect_user_error
+    stdout_contains "lint-commit-msg: ERROR: \$LCM_SUBJECT_LINE_PREFIX_REGEX syntactically incorrect: '^(feat|fix|docs|test: '"
+    stdout_not_contains "body line too long"
+    stdout_not_contains "not capitalized"
+}

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+EOF
+    export LCM_COLOR=never
+}
+
+after_all() {
+    :
+}
+
+before_each() {
+    :
+}
+
+after_each() {
+    :
+}
+
+#test_normal() {
+#
+#}

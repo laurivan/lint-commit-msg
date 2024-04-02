@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+invalid commit message (subject not capitalized)
+EOF
+    export LCM_COLOR=never
+}
+
+test_standalone() {
+    call lint-commit-msg ../msg.txt
+    expect_linting_error
+    stdout_not_contains "Aborting commit!"
+    stderr_not_contains "Aborting commit!"
+}
+
+test_commit() {
+    export LCM_INTERACTIVE=never
+
+    git init
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1"
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    echo a > a.txt; git add a.txt;
+    call git commit --file ../msg.txt
+
+    exit_code 1
+    # git seems to redirect hook's stdout to stderr
+    stderr_contains "ERROR: commit message not properly formatted"
+    stderr_contains "- line 1: subject not capitalized"
+    stderr_not_contains "Continue anyway?"
+    stderr_contains "Aborting commit!"
+    stderr_contains "Commit message saved in .git/lint-commit-msg.MSG"
+}

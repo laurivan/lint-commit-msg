@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+Delete redundant SQL tables
+EOF
+    export LCM_COLOR=never
+}
+
+#after_all() {
+#
+#}
+
+#before_each() {
+#
+#}
+
+#after_each() {
+#
+#}
+
+test_normal() {
+    call lint-commit-msg ../msg.txt
+    expect_success
+}
+
+test_ignore() {
+    export LCM_IGNORE_ALL=true
+    call lint-commit-msg ../msg.txt
+    exit_code 0
+    stdout_contains "WARN: Not linting commit message (LCM_IGNORE_ALL set to 'true')"
+}

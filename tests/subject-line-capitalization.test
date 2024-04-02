@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    export LCM_COLOR=never
+}
+
+test_not_capitalized() {
+    cat > msg.txt <<EOF
+delete redundant SQL tables
+EOF
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains "- line 1: subject not capitalized"
+    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_NOT_CAPITALIZED$"
+}
+
+test_number() {
+    cat > msg.txt <<EOF
+2nd attempt to trigger CI pipeline
+EOF
+    call lint-commit-msg msg.txt
+    expect_success
+}
+
+test_ignore_not_capitalized() {
+    cat > msg.txt <<EOF
+delete redundant SQL tables
+EOF
+    export LCM_IGNORE_SUBJECT_NOT_CAPITALIZED=true
+    call lint-commit-msg msg.txt
+    expect_success
+    stdout_contains "(intentionally) ignoring error (LCM_IGNORE_SUBJECT_NOT_CAPITALIZED=true)"
+}
+
+test_not_capitalized_without_prefix() {
+    cat > msg.txt <<EOF
+PROJ-651 delete redundant SQL tables
+EOF
+    call lint-commit-msg msg.txt
+    expect_success
+}
+
+test_not_capitalized_with_prefix() {
+    cat > msg.txt <<EOF
+PROJ-651 delete redundant SQL tables
+EOF
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='PROJ-[1-9][0-9]* '
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains '- line 1: subject "delete redundant SQL tables" not capitalized'
+    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_NOT_CAPITALIZED$"
+}
+
+test_not_capitalized_with_lowercase_prefix() {
+    cat > msg.txt <<EOF
+feat: delete redundant SQL tables
+EOF
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|doc|test): '
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stdout_contains '- line 1: subject "delete redundant SQL tables" not capitalized'
+    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_NOT_CAPITALIZED$"
+}
+
+test_capitalized_with_lowercase_prefix() {
+    cat > msg.txt <<EOF
+feat: Delete redundant SQL tables
+EOF
+    export LCM_SUBJECT_LINE_PREFIX_REGEX='(feat|doc|test): '
+    call lint-commit-msg msg.txt
+    expect_success
+}
