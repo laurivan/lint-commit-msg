@@ -5,10 +5,11 @@ sa_long_description=(
 "testrunner is a simple test runner that reads 'test suites' i.e. text files containing test cases written as Bash functions. The test case functions are named 'test_xxx'. The text file can optionally contain any combination of functions named 'before_all', 'after_all', 'before_each', and 'after_each' which are run before any test case, after all test cases, before each test case, and after each test case respectively."
 "Each test case is executed in a subshell and thus variables declared or modified within a test case cannot be seen by other test cases. Variables declared in before_all function can be seen and modified by all test cases (but the modifications are not visible to other test cases)."
 
-"testrunner creates a 'target' directory to hold resources created by test cases. For every test file a 'suite directory' is created under target directory. 'before_all' and 'after_all' are executed in the suite directory. For each test case a 'test case directory' is creatd under suite directory. 'before_each', 'after_each', and the test case function itself are executed in the test case directory."
+"testrunner creates a 'out' directory to hold resources created by test cases. For every test file a 'suite directory' is created under out directory. 'before_all' and 'after_all' are executed in the suite directory. For each test case a 'test case directory' is creatd under suite directory. 'before_each', 'after_each', and the test case function itself are executed in the test case directory."
 )
 
 log_align_level=true
+SIMPLEARGS=simpleargs-v0.2.0
 # -------------------------------- simpleargs --------------------------------
 . "${SIMPLEARGS}" || { echo "Error loading '${SIMPLEARGS}'" >&2; exit 1; }
 
@@ -16,7 +17,7 @@ sa_parse "$0" \
          --fail-immediately @doc="Stop running tests as soon as a test case fails." \
          --log-level OFF,ERROR,WARN,INFO,CONFIG,FINE @varname=tmp_log_level @default=INFO \
          @doc="Log level, allowed values: @{v} (default: @{d})." \
-         -t/--target-dir arg @default=target \
+         -o/--out-dir arg @default=out \
          @doc="Directory to hold resources created by test cases (default: @{d}); created if doesn't exist already." \
          "<test file>..." @varname=test_files @@glob "*.test" @@file \
          @doc="Test suite files with .test suffix containing test case functions."
@@ -26,11 +27,11 @@ sa_end_parse $?; sa_process "$@"; sa_end_process $?; eval "set -- ${sa_args}"
 log_level=${tmp_log_level}
 test_case_prefix='test_'
 
-mkdir -p "${target_dir}"
-absolute_target_dir=$(realpath "${target_dir}")
-if ! [ -d "${absolute_target_dir}" ]
+mkdir -p "${out_dir}"
+absolute_out_dir=$(realpath "${out_dir}")
+if ! [ -d "${absolute_out_dir}" ]
 then
-    log ERROR "Could not get absolute target dir"
+    log ERROR "Could not get absolute out dir"
     exit 1
 fi
 
@@ -82,7 +83,7 @@ run_test_file() {
 
         log CONFIG "Running ${TEST_FILE}..."
         # Create 'suite dir' and cd into it.
-        test_output_dir="${target_dir}/${TEST_FILE_BASENAME}"
+        test_output_dir="${out_dir}/${TEST_FILE_BASENAME}"
         rm -rf "${test_output_dir}"
         mkdir "${test_output_dir}"
         cd "${test_output_dir}"
@@ -120,8 +121,8 @@ run_test_file() {
                     cat "${TEST_CASE_DIR}/test.log"
                     touch fail
 
-                    [ -h "${absolute_target_dir}/failed" ] && rm "${absolute_target_dir}/failed"
-                    ln -s "${TEST_CASE_DIR}" "${absolute_target_dir}/failed"
+                    [ -h "${absolute_out_dir}/failed" ] && rm "${absolute_out_dir}/failed"
+                    ln -s "${TEST_CASE_DIR}" "${absolute_out_dir}/failed"
                     echo
 
                     [ "${fail_immediately}" = "true" ] && exit 50
