@@ -49,15 +49,19 @@ filter_functions() {
 
 run_func_if_exists() {
     local func="$1"
+    local file="$2"
     if [ "$(type -t "${func}")" = "function" ]
     then
-        "${func}" || {
-            log ERROR "${func} returned code $?"
-            return
-        }
+        "${func}"
+        local exit_code=$?
+        [ "${exit_code}" -ne 0 ] && log ERROR "${file}:${func}() returned code ${exit_code}" >&3
+        return "${exit_code}"
     fi
+    return 0
 }
 
+EXIT_CODE_TEST_FAILURE=1
+EXIT_CODE_LIFECYCLE_FUNC_FAILURE=2
 run_test_file() {
     test_file="$1"
     cat "${test_file}" |
@@ -66,16 +70,16 @@ run_test_file() {
         sort |
         uniq --repeated |
         grep -E '.+' &&
-        log WARN "Duplicate functions in '${test_file}' (see above)"
+        log ERROR "Duplicate functions in '${test_file}' (see above)" &&
+        return "${EXIT_CODE_TEST_FAILURE}"
     (
         TEST_FILE="${test_file}"
         TEST_FILE_BASENAME="$(basename -s .test "${TEST_FILE}")"
         TEST_FILE_DIR="$(realpath "$(dirname "${TEST_FILE}")")"
-        log_vars CONFIG "${!LCM_@}"
 
         unset -f before_all before_each after_all after_each $(filter_functions "^${test_case_prefix}")
         . "${TEST_FILE}"
-        if [ "$(filter_functions "^${test_case_prefix}" | wc -l)" -eq 0 ]
+        if ! filter_functions "^${test_case_prefix}" >/dev/null # TODO: test this
         then
             log CONFIG "No test cases in ${TEST_FILE}"
             exit 0
@@ -88,7 +92,10 @@ run_test_file() {
         mkdir "${test_output_dir}"
         cd "${test_output_dir}"
 
-        run_func_if_exists before_all >test.log 2>&1 || exit 19
+        run_func_if_exists before_all "${TEST_FILE_BASENAME}" 3>&1 >test.log 2>&1 ||
+            exit "${EXIT_CODE_LIFECYCLE_FUNC_FAILURE}"
+
+        _SUCCESS=true
         for test_function in $(filter_functions "^${test_case_prefix}")
         do
             TEST_CASE="${test_function#${test_case_prefix}}"
@@ -96,48 +103,67 @@ run_test_file() {
             (
                 cd "${TEST_CASE}"
                 TEST_CASE_DIR="${PWD}"
-                > test.log
-                run_func_if_exists before_each >> "${TEST_CASE_DIR}/test.log" 2>&1 || exit 19
 
+                # Initialize variables used by testlib functions
                 lcm_test_status=0
                 call_called=false
                 export STDOUT="${TEST_CASE_DIR}/stdout.txt"
                 export STDERR="${TEST_CASE_DIR}/stderr.txt"
                 export EXIT_CODE="${TEST_CASE_DIR}/exit_code.txt"
 
+                # Run before_each
+                run_func_if_exists before_each "${TEST_FILE_BASENAME}" 3>&1 > "${TEST_CASE_DIR}/test.log" 2>&1 ||
+                    exit "${EXIT_CODE_LIFECYCLE_FUNC_FAILURE}"
+                # Run the actual test case function
                 "${test_function}" >> "${TEST_CASE_DIR}/test.log" 2>&1
+                # Run after_each
+                run_func_if_exists after_each "${TEST_FILE_BASENAME}" 3>&1 >> "${TEST_CASE_DIR}/test.log" 2>&1 ||
+                    exit "${EXIT_CODE_LIFECYCLE_FUNC_FAILURE}"
 
-                run_func_if_exists after_each >> "${TEST_CASE_DIR}/test.log" 2>&1 || exit 19
                 log INFO "Executed ${TEST_FILE_BASENAME}.${TEST_CASE}" ""
                 if [ "${lcm_test_status}" -eq 0 ]
                 then
                     log_display_level=false log INFO "  OK"
+                    exit 0
                 else
                     log_display_level=false log ERROR "  FAIL"
-                    if [ "${call_called}" = "false" ]
-                    then
-                        echo "WARN: 'call' was not called as part of test case"
-                    fi
+
+                    [ "${call_called}" = "false" ] && echo "WARN: 'call' was not called as part of test case"
                     cat "${TEST_CASE_DIR}/test.log"
                     touch fail
 
+                    # Create a symlink to the test case directory of the failing test case for quick access.
                     [ -h "${absolute_out_dir}/failed" ] && rm "${absolute_out_dir}/failed"
                     ln -s "${TEST_CASE_DIR}" "${absolute_out_dir}/failed"
                     echo
 
-                    [ "${fail_immediately}" = "true" ] && exit 50
+                    exit "${EXIT_CODE_TEST_FAILURE}"
                 fi
-                :
-            ) || exit
+            )
+
+            test_case_exit_code=$?
+            if [ "${test_case_exit_code}" -ne 0 ]
+            then
+                _SUCCESS=false
+                [ "${fail_immediately}" = "true" ] && exit "${test_case_exit_code}"
+            fi
         done
-        run_func_if_exists after_all >>test.log 2>&1 || exit 19
-        :
+        run_func_if_exists after_all "${TEST_FILE_BASENAME}" 3>&1 >>test.log 2>&1 || exit "${EXIT_CODE_LIFECYCLE_FUNC_FAILURE}"
+
+        [ "${_SUCCESS}" = "false" ] && exit "${EXIT_CODE_TEST_FAILURE}" || exit 0
     )
-    local exit_code=$?
-    return "${exit_code}"
 }
 
+_ALL_SUCCESS=true
 for test_file in "${test_files[@]}"
 do
-    run_test_file "${test_file}" || exit
+    run_test_file "${test_file}"
+    test_file_exit_code=$?
+    if [ "${test_file_exit_code}" -ne 0 ]
+    then
+        _ALL_SUCCESS=false
+        [ "${fail_immediately}" = "true" ] && exit "${test_file_exit_code}"
+    fi
 done
+
+[ "${_ALL_SUCCESS}" = "true" ]
