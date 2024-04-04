@@ -275,6 +275,7 @@ cat "${input_file}" > "${raw_input_file}"
     git init -q repo || exit
     cd repo || exit
     git commit --quiet --allow-empty --allow-empty-message \
+        --author "John Doe <john.doe@example.com>" \
         --file="${raw_input_file}" --cleanup="${cleanup_mode}" || exit
     git log --format=format:%B -n 1 HEAD > "${cleaned_input_file}" || exit
 ) || unexpected_error "failed to clean up commit message"
