@@ -8,7 +8,7 @@ before_all() {
 
 before_each() {
     # Default cleanup mode will remove trailing whitespace
-    git init
+    init_git_repo
     git config commit.cleanup verbatim
 }
 

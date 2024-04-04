@@ -36,7 +36,7 @@ EOF
 
     # Use 'verbatim' cleanup mode because the default
     # will remove trailing empty lines.
-    git init
+    init_git_repo
     git config commit.cleanup verbatim
 
     call lint-commit-msg msg.txt

@@ -5,7 +5,7 @@
 before_all() {
     export LCM_COLOR=never
 
-    git init
+    init_git_repo
     git config commit.cleanup verbatim
 }
 

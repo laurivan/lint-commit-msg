@@ -272,7 +272,7 @@ cleaned_input_file="${tmp_dir}/cleaned-commit-msg"
 cat "${input_file}" > "${raw_input_file}"
 (
     cd "${tmp_dir}" || exit
-    git init -q repo || exit
+    git -c "init.defaultBranch=main" init -q repo || exit
     cd repo || exit
     git -c "user.name=John Doe" -c "user.email=john.doe@example.com" \
         commit --quiet --allow-empty --allow-empty-message \

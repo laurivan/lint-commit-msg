@@ -22,3 +22,13 @@ expect_success() {
     stdout_not_contains "WARN"
     stdout_not_contains "ERROR"
 }
+
+# init_git_repo initializes a Git repository in the working
+# directory using configuration that is otherwise arbitrary
+# but suppresses warnings and errors in Github CI workflows.
+init_git_repo() {
+    git -c "init.defaultBranch=main" init &&
+        git config user.name "John Doe" &&
+        git config user.email "john.doe@example.com" ||
+        fail "Failed to initialize git repo"
+}

@@ -19,7 +19,7 @@ test_standalone() {
 test_commit() {
     export LCM_INTERACTIVE=never
 
-    git init
+    init_git_repo
     cat > .git/hooks/commit-msg <<'EOF'
 #!/bin/sh
 

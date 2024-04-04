@@ -7,7 +7,7 @@ before_all() {
 }
 
 before_each() {
-    git init
+    init_git_repo
     cat > .git/hooks/commit-msg <<'EOF'
 #!/bin/sh
 
