@@ -457,13 +457,19 @@ check_subject_line() {
     # Subject mood check
     local subject_first_word=${subject%% *}
     shopt -s nocasematch
-    if [[ "${subject_first_word}" =~ (ed|ing|s)$ ]] ||
+    if [[ "${subject_first_word}" =~ (ed|ing|[^s]s)$ ]] ||
            [[ "${subject_first_word}" =~ ^(wrote|made|hid|sent|gave|threw|bound|took)$ ]]
     then
         local invalid_suffix
         case "${BASH_REMATCH[0]}" in
-            ed|ing|s)
+            ed|ing)
                 invalid_suffix="${BASH_REMATCH[0]}"
+                ;;
+            [^s]s)
+                # This special handling is needed to not flag verbs that end in 's'
+                # in their imperative mood e.g. "suppress". As far as I can think
+                # such verbs always end in double 's' (miss, kiss, bless).
+                invalid_suffix="s"
                 ;;
             *)
                 # ${subject_first_word} is one of the detected irregular

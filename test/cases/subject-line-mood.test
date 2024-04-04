@@ -58,3 +58,11 @@ EOF
     call lint-commit-msg msg.txt
     expect_success
 }
+
+test_imperative_mood_verbs_with_s_suffix() {
+    cat > msg.txt <<EOF
+Suppress redundant linter warnings
+EOF
+    call lint-commit-msg msg.txt
+    expect_success
+}
