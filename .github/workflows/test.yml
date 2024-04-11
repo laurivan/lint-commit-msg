@@ -1,4 +1,4 @@
-name: CI
+name: test
 
 # Controls when the workflow will run
 on:

@@ -1,4 +1,11 @@
-# lint-commit-msg
+![lint-commit-msg logo](doc/logo.png)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+![Unit tests](https://img.shields.io/github/actions/workflow/status/laurivan/lint-commit-msg/test?logo=GitHub&label=test)
+
+---
+<br/>
+
 `lint-commit-msg` checks that a Git commit message follows
 [a set of formatting and stylistic conventions](https://cbea.ms/git-commit/#seven-rules).
 It is intended to be used in Git `commit-msg` hook.
@@ -16,8 +23,7 @@ Commit message saved in .git/lint-commit-msg.MSG
 $
 ```
 
-## [TL;DR](https://en.wikipedia.org/wiki/TL;DR "too long; didn't read") instructions
-
+## Quick start
 1. Download the script, make it executable, and put in your `PATH`.
 1. Call it in your [commit-msg hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) like this
    ```
