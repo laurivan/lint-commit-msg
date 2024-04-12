@@ -26,7 +26,7 @@ $
 ```
 
 ## Quick start
-1. Download the script, make it executable, and put in your `PATH`.
+1. [Download](https://github.com/laurivan/lint-commit-msg/releases/download/v0.1.0/lint-commit-msg) the script, make it executable, and put in your `PATH`.
 1. Call it in your [commit-msg hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) like this
    ```
    lint-commit-msg "$1" || exit
@@ -50,7 +50,7 @@ $
 ## Installation
 Download the script and make it executable.
 ```sh
-curl URL-here > lint-commit-msg
+curl https://github.com/laurivan/lint-commit-msg/releases/download/v0.1.0/lint-commit-msg > lint-commit-msg
 chmod u+x lint-commit-msg
 ```
 
