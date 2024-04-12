@@ -22,10 +22,12 @@
 # SOFTWARE.
 #
 #
+# lint-commit-msg @{version information} (placeholder for making releases)
 #
 # TODO: allow the user to edit the message if it contains errors
 #  - note that this doesn't work if the input comes from stdin
 #  - text editor preference: GIT_EDITOR, VISUAL, EDITOR, vi (or nano)
+# TODO: check for leading whitespace in the subject line
 
 EXIT_CODE_LINTING_ERROR=1
 EXIT_CODE_USER_ERROR=2
