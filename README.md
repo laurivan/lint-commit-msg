@@ -1,7 +1,7 @@
 ![lint-commit-msg logo](doc/logo.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![Unit tests](https://img.shields.io/github/actions/workflow/status/laurivan/lint-commit-msg/test?logo=GitHub&label=test)
+![Unit tests](https://img.shields.io/github/actions/workflow/status/laurivan/lint-commit-msg/test.yml?logo=GitHub&label=test)
 ![Releases](https://img.shields.io/github/v/release/laurivan/lint-commit-msg)
 ![Runs on Bash version 3 and higher](https://img.shields.io/badge/Bash-%E2%89%A53-blue?logo=GNU%20Bash)
 
