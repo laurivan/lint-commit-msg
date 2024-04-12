@@ -13,7 +13,7 @@ See [94mhttps://cbea.ms/git-commit/#seven-rules[m for details
 about the conventions and the rationale behind them.
 
 [1;37mUsage:[m [96mlint-commit-msg [<input file>|-][m
-If input file is '-' or is not provided read from stdin.
+If input file is omitted or '-' read from stdin.
 
 [1;37mGeneral settings[m
   LCM_INTERACTIVE (always|never|auto, default: auto)

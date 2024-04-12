@@ -121,7 +121,7 @@ EOF
 
     printf "${color_white_bold}Usage:${color_reset} "
     printf "${color_cyan}lint-commit-msg [<input file>|-]${color_reset}\n"
-    printf "If input file is '-' or is not provided read from stdin.\n"
+    printf "If input file is omitted or '-' read from stdin.\n"
     echo
     printf "${color_white_bold}General settings${color_reset}\n"
     cat <<EOF
