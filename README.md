@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Unit tests](https://img.shields.io/github/actions/workflow/status/laurivan/lint-commit-msg/test?logo=GitHub&label=test)
+![Releases](https://img.shields.io/github/v/release/laurivan/lint-commit-msg)
 
 ---
 <br/>
