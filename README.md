@@ -1,9 +1,9 @@
 ![lint-commit-msg logo](doc/logo.png)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![Unit tests](https://img.shields.io/github/actions/workflow/status/laurivan/lint-commit-msg/test.yml?logo=GitHub&label=test)
-![Releases](https://img.shields.io/github/v/release/laurivan/lint-commit-msg)
-![Runs on Bash version 3 and higher](https://img.shields.io/badge/Bash-%E2%89%A53-blue?logo=GNU%20Bash)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://choosealicense.com/licenses/mit)
+[![Unit tests](https://img.shields.io/github/actions/workflow/status/laurivan/lint-commit-msg/test.yml?logo=Github&label=test&cacheSeconds=600)](https://github.com/laurivan/lint-commit-msg/actions/workflows/test.yml)
+[![Releases](https://img.shields.io/github/v/release/laurivan/lint-commit-msg)](https://github.com/laurivan/lint-commit-msg/releases)
+[![Runs on Bash version 3 and higher](https://img.shields.io/badge/Bash-%E2%89%A53-blue?logo=GNU%20Bash)](https://www.gnu.org/software/bash/)
 
 ---
 <br/>
