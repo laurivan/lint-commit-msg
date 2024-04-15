@@ -53,7 +53,7 @@ send -- "no\n"
 expect eof
 EOF
 
-    echo a > a.txt; git add a.txt;
+    echo a > a.txt; git add a.txt
     call expect expect.cmd
     # Cannot test the exit code because expect returns 0 as its exit code.
     stdout_contains "ERROR: commit message not properly formatted"
@@ -74,7 +74,7 @@ lint-commit-msg "$1"
 EOF
     chmod u+x .git/hooks/commit-msg
 
-    echo a > a.txt; git add a.txt;
+    echo a > a.txt; git add a.txt
     call git commit --file ../msg.txt
 
     exit_code 1

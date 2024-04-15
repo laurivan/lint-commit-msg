@@ -273,8 +273,13 @@ cleaned_input_file="${tmp_dir}/cleaned-commit-msg"
 # might be stdin in which case it can be read only once).
 cat "${input_file}" > "${raw_input_file}"
 (
+    # Unset Git environment variables (in this subshell) to ensure
+    # the cleanup is done "fully isolated" from the Git repository
+    # where we're making the actual commit.
+    unset "${!GIT@}"
+
     cd "${tmp_dir}" || exit
-    git -c "init.defaultBranch=main" init -q repo || exit
+    git init --initial-branch=main --quiet repo || exit
     cd repo || exit
     git -c "user.name=John Doe" -c "user.email=john.doe@example.com" \
         commit --quiet --allow-empty --allow-empty-message \
@@ -345,6 +350,13 @@ error_output=()
 # or executed "standalone" to e.g. lint an existing commit message.
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
 is_committing() {
+    # TODO: revise how this should work when called from an IDE (Eclipse, IntelliJ, etc.)
+    # Eclipse (with Egit plugin) seems to have GIT_DIR and GIT_WORK_TREE defined (but
+    # no other environment variables starting with GIT_).
+    #
+    # Also, note that PATH might be different when commit-msg hook is executed from
+    # an IDE which might result in "lint-commit-msg: command not found"... not sure if
+    # there's anything else to do than mention this in the documentation.
     [ -n "${repo_root}" ] && [ -n "${GIT_INDEX_FILE}" ]
 }
 

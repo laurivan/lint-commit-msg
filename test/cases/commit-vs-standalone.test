@@ -27,7 +27,7 @@ lint-commit-msg "$1"
 EOF
     chmod u+x .git/hooks/commit-msg
 
-    echo a > a.txt; git add a.txt;
+    echo a > a.txt; git add a.txt
     call git commit --file ../msg.txt
 
     exit_code 1
@@ -37,4 +37,11 @@ EOF
     stderr_not_contains "Continue anyway?"
     stderr_contains "Aborting commit!"
     stderr_contains "Commit message saved in .git/lint-commit-msg.MSG"
+
+    # Check that the commit hasn't been done. With Eclipse IDE this
+    # was happening because the git commands used in lint-commit-msg
+    # for cleaning up the commit message were actually operating on
+    # the user's repository and thus ended up committing the staged files.
+    git diff --name-only --staged | grep --quiet "a\.txt" ||
+        fail "a.txt should still be staged"
 }
