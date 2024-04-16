@@ -13,11 +13,11 @@
 It is intended to be used in Git `commit-msg` hook.
 
 ```
-$ git commit -m "add first draft of user documentation explaining how to use the library with HTTPS only"
+$ git commit -m "add first version of REST client and instructions how to use it with HTTPS"
 ERROR: commit message not properly formatted
+- line 1: subject line too long (74), max length is 60
 - line 1: subject not capitalized
-- line 1: subject line too long (87), max length is 60
-  add first draft of user documentation explaining how to use the library with HTTPS only
+  add first version of REST client and instructions how to use it with HTTPS
 
 Continue anyway? [yes/no] no
 Aborting commit!
