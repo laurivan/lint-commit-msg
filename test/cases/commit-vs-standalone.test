@@ -23,7 +23,7 @@ test_commit() {
     cat > .git/hooks/commit-msg <<'EOF'
 #!/bin/sh
 
-lint-commit-msg "$1"
+lint-commit-msg "$1" || exit
 EOF
     chmod u+x .git/hooks/commit-msg
 

@@ -3,16 +3,17 @@
 . "${TEST_FILE_DIR}/common"
 
 before_all() {
+    export LCM_INTERACTIVE=never
     cat > msg.txt <<EOF
 delete redundant SQL tables
 EOF
 }
 
 test_colored_by_default() {
-    # unbuffer makes lint-commit-msg think its output is terminal
+    # unbuffer makes lint-commit-msg think its stdout is terminal
     # which should make the output colored (because LCM_COLOR is not
     # set and the default is 'auto' which should use colors when
-    # printing to terminal
+    # printing to terminal)
     [ -z "${LCM_COLOR}" ] || fail "LCM_COLOR should be null"
     call unbuffer lint-commit-msg ../msg.txt
     expect_linting_error

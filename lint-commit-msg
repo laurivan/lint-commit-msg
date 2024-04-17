@@ -28,6 +28,20 @@
 #  - note that this doesn't work if the input comes from stdin
 #  - text editor preference: GIT_EDITOR, VISUAL, EDITOR, vi (or nano)
 # TODO: check for leading whitespace in the subject line
+# TODO: Note that IDEs are typically started from a menu or otherwise "graphically"
+#   which might result in PATH not containing the entries set in the user specific
+#   startup files (e.g. ~/.bashrc). This might result in lint-commit-msg not being
+#   in PATH when a commit is made from within an IDE. Not sure if there's anything
+#   else to do about it than mention this in the documentation.
+# TODO: Related to the above point: the document should probably mention that
+#   LCM_INTERACTIVE=always should rarely (if ever) be used. In particular, making
+#   a commit in an IDE can (and will) freeze indefinitely waiting for input (that
+#   the user cannot give). One should simply use LCM_INTERACTIVE=auto.
+# TODO: Revise whether the output should go to stdout or stderr. At least Eclipse
+#   seems to show the user only what's printed in stderr. At the moment everything
+#   goes to stdout which leaves the user with only
+#    "Commit was aborted by hook 'commit-msg'"
+# TODO: Add the GitHub URL to usage output.
 
 EXIT_CODE_LINTING_ERROR=1
 EXIT_CODE_USER_ERROR=2
@@ -346,18 +360,20 @@ fi
 #   error_output[4]="Oops, there's space after me. "
 error_output=()
 
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
 # Deduce whether lint-commit-msg is invoked as part of (commit-msg) hook
 # or executed "standalone" to e.g. lint an existing commit message.
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
 is_committing() {
-    # TODO: revise how this should work when called from an IDE (Eclipse, IntelliJ, etc.)
-    # Eclipse (with Egit plugin) seems to have GIT_DIR and GIT_WORK_TREE defined (but
-    # no other environment variables starting with GIT_).
-    #
-    # Also, note that PATH might be different when commit-msg hook is executed from
-    # an IDE which might result in "lint-commit-msg: command not found"... not sure if
-    # there's anything else to do than mention this in the documentation.
-    [ -n "${repo_root}" ] && [ -n "${GIT_INDEX_FILE}" ]
+    # This heuristic seems to work... but it wouldn't hurt to have
+    # something more robust (and documented) for this.
+    [ -n "${repo_root}" ] &&
+        { [ -n "${GIT_DIR}" ] || [ -n "${GIT_INDEX_FILE}" ]; }
+}
+
+# stdout_is_terminal is used to decide if we should activate
+# interactive mode when LCM_INTERACTIVE is set to 'auto'.
+stdout_is_terminal() {
+    [ -t 1 ]
 }
 
 # append_error adds a message about a (linting) error to
@@ -585,12 +601,13 @@ then
     echo
 
     if [ "${LCM_INTERACTIVE}" = "always" ] ||
-           { [ "${LCM_INTERACTIVE}" = "auto" ] && is_committing; }
+           { [ "${LCM_INTERACTIVE}" = "auto" ] && stdout_is_terminal && is_committing; }
     then
         # stdin in commit-msg hook is set to /dev/null by Git so
         # use another file descriptor for reading user input.
         exec 5</dev/tty
-        read -u 5 -p "Continue anyway? [yes/no] " reply
+        printf "Continue anyway? [yes/no] "
+        read -u 5 reply
         prompt_exit_code=$?
         exec 5>&-
 

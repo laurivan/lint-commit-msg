@@ -155,7 +155,7 @@ The following sections describes each configuration variable and
 
 | Environment variable | Description | Default value |
 | ---------------------| ----------- | ------------- |
-| `LCM_INTERACTIVE` | Allow the user to choose interactively whether to ignore the reported errors. Options: `always`, `never`, `auto`. Using `auto` will enable interactive mode if lint-commit-msg is run as part of commit-msg hook. | `auto` |
+| `LCM_INTERACTIVE` | Allow the user to choose interactively whether to ignore the reported errors. Options: `always`, `never`, `auto`. Using `auto` will enable interactive mode if lint-commit-msg is run as part of commit-msg hook AND stdout is terminal. Note that `always` is hardly ever what you want and doesn't play along well when committing from an IDE. | `auto` |
 | `LCM_COLOR` | Whether to use colored output. Options: `always`, `never`, `auto`. With `auto` colors are used if printing to terminal). | `auto` |
 
 The variables above will also accept values `true` (alias for `always`) and `false` (alias for `never`).
