@@ -18,8 +18,8 @@ EOF
     printf "This is the last line and it's missing newline." >> msg.txt
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "missing EOL at end of commit message"
-    # stdout_contains_regex "^  LCM_IGNORE_MISSING_FINAL_EOL$"
+    stderr_contains "missing EOL at end of commit message"
+    # stderr_contains_regex "^  LCM_IGNORE_MISSING_FINAL_EOL$"
 }
 
 test_ignore_missing_eol() {

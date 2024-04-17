@@ -13,8 +13,8 @@ This line should be blank.
 EOF
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 2: should be blank (separates subject line and body)"
-    # stdout_contains_regex "^  LCM_IGNORE_2ND_LINE_NOT_BLANK$"
+    stderr_contains "- line 2: should be blank (separates subject line and body)"
+    # stderr_contains_regex "^  LCM_IGNORE_2ND_LINE_NOT_BLANK$"
 }
 
 test_ignore_2nd_line_not_blank() {
@@ -41,5 +41,5 @@ EOF
 
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- commit message should be either"
+    stderr_contains "- commit message should be either"
 }

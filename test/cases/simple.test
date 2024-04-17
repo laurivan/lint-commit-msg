@@ -30,5 +30,5 @@ test_ignore() {
     export LCM_IGNORE_ALL=true
     call lint-commit-msg ../msg.txt
     exit_code 0
-    stdout_contains "WARN: Not linting commit message (LCM_IGNORE_ALL set to 'true')"
+    stderr_contains "WARN: Not linting commit message (LCM_IGNORE_ALL set to 'true')"
 }

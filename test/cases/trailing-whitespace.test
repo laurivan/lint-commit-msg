@@ -19,8 +19,8 @@ EOF
 
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 1: trailing whitespace"
-    # stdout_contains_regex "^  LCM_IGNORE_TRAILING_WHITESPACE"
+    stderr_contains "- line 1: trailing whitespace"
+    # stderr_contains_regex "^  LCM_IGNORE_TRAILING_WHITESPACE"
 }
 
 test_trailing_ws_in_body() {
@@ -35,9 +35,9 @@ EOF
 
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 4: trailing whitespace"
-    stdout_contains "- line 6: trailing whitespace"
-    # stdout_contains_regex "^  LCM_IGNORE_TRAILING_WHITESPACE"
+    stderr_contains "- line 4: trailing whitespace"
+    stderr_contains "- line 6: trailing whitespace"
+    # stderr_contains_regex "^  LCM_IGNORE_TRAILING_WHITESPACE"
 }
 
 test_ignore_trailing_ws() {

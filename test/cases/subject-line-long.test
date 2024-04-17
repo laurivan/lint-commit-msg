@@ -12,16 +12,16 @@ EOF
 test_too_long_for_default_configuration() {
     call lint-commit-msg ../msg.txt
     expect_linting_error
-    stdout_contains "- line 1: subject line too long (64), max length is 60"
-    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_LINE_TOO_LONG$"
-    # stdout_contains "  LCM_IGNORE_SUBJECT_LINE_TOO_LONG=true git commit ..."
+    stderr_contains "- line 1: subject line too long (64), max length is 60"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_LINE_TOO_LONG$"
+    # stderr_contains "  LCM_IGNORE_SUBJECT_LINE_TOO_LONG=true git commit ..."
 }
 
 test_still_too_long() {
     export LCM_SUBJECT_LINE_MAX_LENGTH=63
     call lint-commit-msg ../msg.txt
     expect_linting_error
-    stdout_contains "- line 1: subject line too long (64), max length is 63"
+    stderr_contains "- line 1: subject line too long (64), max length is 63"
 }
 
 test_allow_long_subject_line() {

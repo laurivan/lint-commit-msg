@@ -13,15 +13,15 @@ EOF
 
 test_too_long_for_default_configuration() {
     call lint-commit-msg ../msg.txt
-    stdout_contains "- line 3: body line too long (85), max length is 72"
-    # stdout_contains_regex "^  LCM_IGNORE_BODY_LINE_TOO_LONG"
+    stderr_contains "- line 3: body line too long (85), max length is 72"
+    # stderr_contains_regex "^  LCM_IGNORE_BODY_LINE_TOO_LONG"
 }
 
 test_still_too_long() {
     export LCM_BODY_LINE_MAX_LENGTH=84
     call lint-commit-msg ../msg.txt
     expect_linting_error
-    stdout_contains "- line 3: body line too long (85), max length is 84"
+    stderr_contains "- line 3: body line too long (85), max length is 84"
 }
 
 test_allow_long_body_line() {

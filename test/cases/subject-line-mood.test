@@ -12,9 +12,9 @@ Updating CI pipelines
 EOF
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 1: verb 'Updating' in the subject not in imperative mood,"
-    stdout_contains "use for example 'Add' instead of 'Adding'"
-    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+    stderr_contains "- line 1: verb 'Updating' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Adding'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }
 
 test_verb_past_tense() {
@@ -23,9 +23,9 @@ Updated CI pipelines
 EOF
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 1: verb 'Updated' in the subject not in imperative mood,"
-    stdout_contains "use for example 'Add' instead of 'Added'"
-    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+    stderr_contains "- line 1: verb 'Updated' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Added'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }
 
 test_verb_third_person_present() {
@@ -34,9 +34,9 @@ Updates CI pipelines
 EOF
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 1: verb 'Updates' in the subject not in imperative mood,"
-    stdout_contains "use for example 'Add' instead of 'Adds'"
-    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+    stderr_contains "- line 1: verb 'Updates' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Adds'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }
 
 test_irregular_verb() {
@@ -45,9 +45,9 @@ Wrote API documentation
 EOF
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 1: verb 'Wrote' in the subject not in imperative mood,"
-    stdout_contains "use for example 'Add' instead of 'Added'"
-    # stdout_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+    stderr_contains "- line 1: verb 'Wrote' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Added'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }
 
 test_ignore_verb() {

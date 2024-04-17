@@ -13,14 +13,14 @@ test_never() {
     export LCM_INTERACTIVE=never
     call lint-commit-msg ../msg.txt
     expect_linting_error
-    stdout_not_contains "Continue anyway?"
+    stderr_not_contains "Continue anyway?"
 }
 
 test_false() {
     export LCM_INTERACTIVE=false
     call lint-commit-msg ../msg.txt
     expect_linting_error
-    stdout_not_contains "Continue anyway?"
+    stderr_not_contains "Continue anyway?"
 }
 
 # lint-commit-msg is run with stdout (and stderr) redirected
@@ -30,7 +30,7 @@ test_default_not_terminal() {
     unset LCM_INTERACTIVE # Ensure this is unset.
     call lint-commit-msg ../msg.txt
     expect_linting_error
-    stdout_not_contains "Continue anyway?"
+    stderr_not_contains "Continue anyway?"
 }
 
 test_default_within_terminal_within_hook() {
@@ -56,7 +56,8 @@ EOF
 
     echo a > a.txt; git add a.txt
 
-    # unbuffer makes lint-commit-msg think its stdout is terminal
+    # Using expect makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
     call expect expect.cmd
     # Cannot test the exit code because expect returns 0 as its exit code.
     stdout_contains "ERROR: commit message not properly formatted"
@@ -69,9 +70,10 @@ EOF
 test_never_within_terminal() {
     export LCM_INTERACTIVE=never
 
-    # unbuffer makes lint-commit-msg think its stdout is terminal
+    # Using unbuffer makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
     call unbuffer lint-commit-msg ../msg.txt
-    expect_linting_error
+    exit_code 1
     stdout_contains "ERROR: commit message not properly formatted"
     stdout_contains "- line 1: subject not capitalized"
     stdout_not_contains "Continue anyway?"
@@ -90,6 +92,8 @@ send -- "no\n"
 expect eof
 EOF
 
+    # Using unbuffer makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
     call expect expect.cmd
     # Cannot test the exit code because expect returns 0 as its exit code.
     stdout_contains "ERROR: commit message not properly formatted"
@@ -110,6 +114,8 @@ send -- "no\n"
 expect eof
 EOF
 
+    # Using unbuffer makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
     call expect expect.cmd
     # Cannot test the exit code because expect returns 0 as its exit code.
     stdout_contains "ERROR: commit message not properly formatted"
@@ -140,6 +146,8 @@ EOF
 
     echo a > a.txt; git add a.txt
 
+    # Using expect makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
     call expect expect.cmd
     # Cannot test the exit code because expect returns 0 as its exit code.
     stdout_contains "ERROR: commit message not properly formatted"

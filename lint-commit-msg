@@ -33,14 +33,6 @@
 #   startup files (e.g. ~/.bashrc). This might result in lint-commit-msg not being
 #   in PATH when a commit is made from within an IDE. Not sure if there's anything
 #   else to do about it than mention this in the documentation.
-# TODO: Related to the above point: the document should probably mention that
-#   LCM_INTERACTIVE=always should rarely (if ever) be used. In particular, making
-#   a commit in an IDE can (and will) freeze indefinitely waiting for input (that
-#   the user cannot give). One should simply use LCM_INTERACTIVE=auto.
-# TODO: Revise whether the output should go to stdout or stderr. At least Eclipse
-#   seems to show the user only what's printed in stderr. At the moment everything
-#   goes to stdout which leaves the user with only
-#    "Commit was aborted by hook 'commit-msg'"
 # TODO: Add the GitHub URL to usage output.
 
 EXIT_CODE_LINTING_ERROR=1
@@ -152,6 +144,9 @@ EOF
     printf "  ${color_cyan}git log -n1 --format=format:%%B HEAD | LCM_COLOR=never lint-commit-msg${color_reset}\n"
     exit 0
 fi
+
+# Print everything to stderr.
+exec 1>&2
 
 # unexpected_error can be called if there's an unexpected error or an error
 # in the script's internal logic i.e. there's a bug (which should of course

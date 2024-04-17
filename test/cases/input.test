@@ -25,13 +25,13 @@ EOF
 test_no_such_input_file() {
     call lint-commit-msg non-existent.txt
     expect_user_error
-    stdout_contains "lint-commit-msg: ERROR: no such file or not readable: 'non-existent.txt'"
+    stderr_contains "lint-commit-msg: ERROR: no such file or not readable: 'non-existent.txt'"
 }
 
 test_no_such_input_file_empty_string() {
     call lint-commit-msg ""
     expect_user_error
-    stdout_contains "lint-commit-msg: ERROR: no such file or not readable: ''"
+    stderr_contains "lint-commit-msg: ERROR: no such file or not readable: ''"
 }
 
 test_input_file_not_readable() {
@@ -41,5 +41,5 @@ EOF
     chmod a-r msg.txt
     call lint-commit-msg msg.txt
     expect_user_error
-    stdout_contains "lint-commit-msg: ERROR: no such file or not readable: 'msg.txt'"
+    stderr_contains "lint-commit-msg: ERROR: no such file or not readable: 'msg.txt'"
 }

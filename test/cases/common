@@ -8,7 +8,7 @@ EOF
 
 expect_linting_error() {
     exit_code 1
-    stdout_contains "ERROR: commit message not properly formatted"
+    stderr_contains "ERROR: commit message not properly formatted"
 }
 
 expect_user_error() {
@@ -17,10 +17,9 @@ expect_user_error() {
 
 expect_success() {
     exit_code 0
-    stderr_empty
-    stdout_contains "$(print_ok_message)"
-    stdout_not_contains "WARN"
-    stdout_not_contains "ERROR"
+    stderr_contains "$(print_ok_message)"
+    stderr_not_contains "WARN"
+    stderr_not_contains "ERROR"
 }
 
 # init_git_repo initializes a Git repository in the working

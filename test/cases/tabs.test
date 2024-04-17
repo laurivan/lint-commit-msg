@@ -10,8 +10,8 @@ test_tab_in_subject() {
     printf "This subject\t contains a tab\n" > msg.txt
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 1: tab character(s) found"
-    # stdout_contains_regex "^  LCM_IGNORE_CONTAINS_TABS"
+    stderr_contains "- line 1: tab character(s) found"
+    # stderr_contains_regex "^  LCM_IGNORE_CONTAINS_TABS"
 }
 
 test_tab_in_body() {
@@ -23,8 +23,8 @@ EOF
     printf "contain a tab: \t <-- there it is\n" >> msg.txt
     call lint-commit-msg msg.txt
     expect_linting_error
-    stdout_contains "- line 4: tab character(s) found"
-    # stdout_contains_regex "^  LCM_IGNORE_CONTAINS_TABS"
+    stderr_contains "- line 4: tab character(s) found"
+    # stderr_contains_regex "^  LCM_IGNORE_CONTAINS_TABS"
 }
 
 test_ignore_tabs() {

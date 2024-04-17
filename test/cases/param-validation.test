@@ -42,7 +42,7 @@ test_unknown_var() {
     export LCM_NITERACTIVE=always # Misspelled LCM_INTERACTIVE
     call lint-commit-msg ../msg.txt
     expect_user_error
-    stdout_contains "ERROR: unrecognized configuration variable: LCM_NITERACTIVE"
+    stderr_contains "ERROR: unrecognized configuration variable: LCM_NITERACTIVE"
 }
 
 test_multiple_unknown_vars() {
@@ -53,17 +53,17 @@ test_multiple_unknown_vars() {
     export lcm_color=always # Wrong case
     call lint-commit-msg ../msg.txt
     expect_user_error
-    stdout_contains "unrecognized configuration variable: LCM_NITERACTIVE"
-    stdout_contains "unrecognized configuration variable: LCM_VOLOR"
-    stdout_contains "unrecognized configuration variable: LCM_IGNORE_TASB"
-    stdout_contains "unrecognized configuration variable: lcm_color"
+    stderr_contains "unrecognized configuration variable: LCM_NITERACTIVE"
+    stderr_contains "unrecognized configuration variable: LCM_VOLOR"
+    stderr_contains "unrecognized configuration variable: LCM_IGNORE_TASB"
+    stderr_contains "unrecognized configuration variable: lcm_color"
 }
 
 test_invalid_ignore_var_value() {
     export LCM_IGNORE_BODY_LINE_TOO_LONG=treu
     call lint-commit-msg ../msg.txt
     expect_user_error
-    stdout_contains "ERROR: invalid value, LCM_IGNORE_BODY_LINE_TOO_LONG='treu' (should be true/false)"
+    stderr_contains "ERROR: invalid value, LCM_IGNORE_BODY_LINE_TOO_LONG='treu' (should be true/false)"
 }
 
 test_multiple_invalid_values() {
@@ -79,18 +79,18 @@ test_multiple_invalid_values() {
     call lint-commit-msg ../msg.txt
     expect_user_error
 
-    stdout_contains "ERROR: invalid value, LCM_BODY_LINE_MAX_LENGTH='a72' (should be a positive integer)"
-    stdout_contains "ERROR: invalid value, LCM_COLOR='nevre' (should be always (aka true), never (aka false), or auto)"
-    stdout_contains "ERROR: invalid value, LCM_IGNORE_SUBJECT_MOOD='flase' (should be true/false)"
-    stdout_contains "ERROR: invalid value, LCM_IGNORE_ALL='' (should be true/false)"
-    stdout_contains "ERROR: invalid value, LCM_INTERACTIVE='awlays' (should be always (aka true), never (aka false), or auto)"
-    stdout_contains "ERROR: invalid value, LCM_SUBJECT_LINE_MAX_LENGTH='50 ' (should be a positive integer)"
-    stdout_contains "ERROR: invalid value, LCM_SUBJECT_LINE_MIN_LENGTH='-2' (should be a positive integer)"
-    stdout_contains "ERROR: unrecognized configuration variable: LCM_UNKNOWN"
-    local error_count=$(grep -c "ERROR:" "${STDOUT}")
+    stderr_contains "ERROR: invalid value, LCM_BODY_LINE_MAX_LENGTH='a72' (should be a positive integer)"
+    stderr_contains "ERROR: invalid value, LCM_COLOR='nevre' (should be always (aka true), never (aka false), or auto)"
+    stderr_contains "ERROR: invalid value, LCM_IGNORE_SUBJECT_MOOD='flase' (should be true/false)"
+    stderr_contains "ERROR: invalid value, LCM_IGNORE_ALL='' (should be true/false)"
+    stderr_contains "ERROR: invalid value, LCM_INTERACTIVE='awlays' (should be always (aka true), never (aka false), or auto)"
+    stderr_contains "ERROR: invalid value, LCM_SUBJECT_LINE_MAX_LENGTH='50 ' (should be a positive integer)"
+    stderr_contains "ERROR: invalid value, LCM_SUBJECT_LINE_MIN_LENGTH='-2' (should be a positive integer)"
+    stderr_contains "ERROR: unrecognized configuration variable: LCM_UNKNOWN"
+    local error_count=$(grep -c "ERROR:" "${STDERR}")
     local expected_error_count=8
     [ "${error_count}" -eq "${expected_error_count}" ] ||
-        fail "Expected ${expected_error_count} errors in stdout, got ${error_count}"
+        fail "Expected ${expected_error_count} errors in stderr, got ${error_count}"
 }
 
 test_invalid_var_with_ignore_all() {
