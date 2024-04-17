@@ -15,3 +15,13 @@ test_usage_with_color() {
     diff "${TEST_FILE_DIR}/usage-with-color.snapshot" "${STDOUT}" ||
         fail 'Usage output does not match "snapshot"'
 }
+
+test_usage_with_invalid_env_var() {
+    export LCM_COLOR=never
+
+    # Misspelled variable shouldn't prevent the usage output from being printed.
+    export LCM_INTREACTIVE=never
+    call lint-commit-msg -h
+    stdout_contains "lint-commit-msg (LCM) checks that a Git commit message"
+    stderr_empty
+}

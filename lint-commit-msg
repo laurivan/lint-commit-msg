@@ -65,41 +65,6 @@ _LCM_MSG_BACKUP_FILE=lint-commit-msg.MSG
 [ "${LCM_COLOR}" = "true" ] && LCM_COLOR="always"
 [ "${LCM_COLOR}" = "false" ] && LCM_COLOR="never"
 
-# Validate variables: misspelled variables with LCM_ prefix and variable values.
-invalid_vars=false
-for lcm_var in "${!LCM_@}" "${!lcm_@}"
-do
-    case "${lcm_var}" in
-        LCM_IGNORE_2ND_LINE_NOT_BLANK|LCM_IGNORE_ALL|LCM_IGNORE_BODY_LINE_TOO_LONG|LCM_IGNORE_CONTAINS_TABS|LCM_IGNORE_INVALID_SUBJECT_LINE_PREFIX|LCM_IGNORE_LINE_COUNT_IS_2|LCM_IGNORE_MISSING_FINAL_EOL|LCM_IGNORE_SUBJECT_LINE_ENDS_IN_PERIOD|LCM_IGNORE_SUBJECT_NOT_CAPITALIZED|LCM_IGNORE_SUBJECT_LINE_TOO_LONG|LCM_IGNORE_SUBJECT_LINE_TOO_SHORT|LCM_IGNORE_SUBJECT_MOOD|LCM_IGNORE_SUBJECT_NOT_CAPITALIZED|LCM_IGNORE_TABS|LCM_IGNORE_TRAILING_WHITESPACE)
-            [[ "${!lcm_var}" =~ true|false ]] || {
-                echo "lint-commit-msg: ERROR: invalid value, ${lcm_var}='${!lcm_var}' (should be true/false)"
-                invalid_vars=true
-            }
-            ;;
-        LCM_SUBJECT_LINE_PREFIX_HELP|LCM_SUBJECT_LINE_PREFIX_REGEX)
-            :
-            ;;
-        LCM_COLOR|LCM_INTERACTIVE)
-            [[ "${!lcm_var}" =~ always|never|auto|true|false ]] || {
-                echo "lint-commit-msg: ERROR: invalid value, ${lcm_var}='${!lcm_var}' (should be always (aka true), never (aka false), or auto)"
-                invalid_vars=true
-            }
-            ;;
-        LCM_SUBJECT_LINE_MAX_LENGTH|LCM_SUBJECT_LINE_MIN_LENGTH|LCM_BODY_LINE_MAX_LENGTH)
-            integer_regex='^[1-9][0-9]*$'
-            [[ "${!lcm_var}" =~ ${integer_regex} ]] || {
-                echo "lint-commit-msg: ERROR: invalid value, ${lcm_var}='${!lcm_var}' (should be a positive integer)"
-                invalid_vars=true
-            }
-            ;;
-        *)
-            echo "lint-commit-msg: ERROR: unrecognized configuration variable: ${lcm_var}"
-            invalid_vars=true
-          ;;
-    esac
-done
-${invalid_vars} && exit "${EXIT_CODE_USER_ERROR}"
-
 color_red="\x1B[0;31m"
 color_yellow="\x1B[0;33m"
 color_white_bold="\x1B[1;37m"
@@ -212,6 +177,43 @@ then
     printf "${color_yellow}WARN${color_reset}: Not linting commit message (LCM_IGNORE_ALL set to 'true')\n"
     exit 0
 fi
+
+# Validate variables: misspelled variables with LCM_ prefix and variable values.
+# Do this only after (possibly) printing the usage instructions and after checking
+# whether LCM_IGNORE_ALL is used to bypass lint-commit-msg altogether.
+invalid_vars=false
+for lcm_var in "${!LCM_@}" "${!lcm_@}"
+do
+    case "${lcm_var}" in
+        LCM_IGNORE_2ND_LINE_NOT_BLANK|LCM_IGNORE_ALL|LCM_IGNORE_BODY_LINE_TOO_LONG|LCM_IGNORE_CONTAINS_TABS|LCM_IGNORE_INVALID_SUBJECT_LINE_PREFIX|LCM_IGNORE_LINE_COUNT_IS_2|LCM_IGNORE_MISSING_FINAL_EOL|LCM_IGNORE_SUBJECT_LINE_ENDS_IN_PERIOD|LCM_IGNORE_SUBJECT_NOT_CAPITALIZED|LCM_IGNORE_SUBJECT_LINE_TOO_LONG|LCM_IGNORE_SUBJECT_LINE_TOO_SHORT|LCM_IGNORE_SUBJECT_MOOD|LCM_IGNORE_SUBJECT_NOT_CAPITALIZED|LCM_IGNORE_TABS|LCM_IGNORE_TRAILING_WHITESPACE)
+            [[ "${!lcm_var}" =~ true|false ]] || {
+                echo "lint-commit-msg: ERROR: invalid value, ${lcm_var}='${!lcm_var}' (should be true/false)"
+                invalid_vars=true
+            }
+            ;;
+        LCM_SUBJECT_LINE_PREFIX_HELP|LCM_SUBJECT_LINE_PREFIX_REGEX)
+            :
+            ;;
+        LCM_COLOR|LCM_INTERACTIVE)
+            [[ "${!lcm_var}" =~ always|never|auto|true|false ]] || {
+                echo "lint-commit-msg: ERROR: invalid value, ${lcm_var}='${!lcm_var}' (should be always (aka true), never (aka false), or auto)"
+                invalid_vars=true
+            }
+            ;;
+        LCM_SUBJECT_LINE_MAX_LENGTH|LCM_SUBJECT_LINE_MIN_LENGTH|LCM_BODY_LINE_MAX_LENGTH)
+            integer_regex='^[1-9][0-9]*$'
+            [[ "${!lcm_var}" =~ ${integer_regex} ]] || {
+                echo "lint-commit-msg: ERROR: invalid value, ${lcm_var}='${!lcm_var}' (should be a positive integer)"
+                invalid_vars=true
+            }
+            ;;
+        *)
+            echo "lint-commit-msg: ERROR: unrecognized configuration variable: ${lcm_var}"
+            invalid_vars=true
+          ;;
+    esac
+done
+${invalid_vars} && exit "${EXIT_CODE_USER_ERROR}"
 
 # If no input file is given, use '-' which (when passed to 'cat') will make
 # this script work also when the commit message is passed in via stdin.

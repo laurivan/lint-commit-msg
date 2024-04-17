@@ -92,3 +92,14 @@ test_multiple_invalid_values() {
     [ "${error_count}" -eq "${expected_error_count}" ] ||
         fail "Expected ${expected_error_count} errors in stdout, got ${error_count}"
 }
+
+test_invalid_var_with_ignore_all() {
+    # Invalid environment variable value
+    export LCM_IGNORE_BODY_LINE_TOO_LONG=treu
+    # LCM_IGNORE_ALL should still be able to bypass the linting.
+    export LCM_IGNORE_ALL=true
+    call lint-commit-msg ../msg.txt
+    exit_code 0
+    stdout_not_contains "ERROR"
+    stderr_not_contains "ERROR"
+}
