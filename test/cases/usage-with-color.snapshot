@@ -1,4 +1,4 @@
-lint-commit-msg (LCM) checks that a Git commit message
+[1;37mlint-commit-msg (LCM)[m checks that a Git commit message
 follows a set of formatting and stylistic conventions.
 
   1. Separate subject from body with a blank line
@@ -11,6 +11,8 @@ follows a set of formatting and stylistic conventions.
 
 See [94mhttps://cbea.ms/git-commit/#seven-rules[m for details
 about the conventions and the rationale behind them.
+For more detailed documentation and usage examples
+visit [94mhttps://github.com/laurivan/lint-commit-msg[m
 
 [1;37mUsage:[m [96mlint-commit-msg [<input file>|-][m
 If input file is omitted or '-' read from stdin.

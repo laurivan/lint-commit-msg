@@ -76,7 +76,7 @@ fi
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]
 then
     cat <<EOF
-lint-commit-msg (LCM) checks that a Git commit message
+$(printf "${color_white_bold}")lint-commit-msg (LCM)$(printf "${color_reset}") checks that a Git commit message
 follows a set of formatting and stylistic conventions.
 
   1. Separate subject from body with a blank line
@@ -89,6 +89,8 @@ follows a set of formatting and stylistic conventions.
 
 See $(printf "${color_light_blue}")https://cbea.ms/git-commit/#seven-rules$(printf "${color_reset}") for details
 about the conventions and the rationale behind them.
+For more detailed documentation and usage examples
+visit $(printf "${color_light_blue}")https://github.com/laurivan/lint-commit-msg$(printf "${color_reset}")
 
 EOF
 
