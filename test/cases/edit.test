@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+. "${TEST_FILE_DIR}/common"
+
+before_all() {
+    cat > msg.txt <<EOF
+delete redundant SQL tables
+EOF
+    export LCM_COLOR=never
+}
+
+test_not_writable_file() {
+    export LCM_INTERACTIVE=always
+
+    init_git_repo
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1" || exit
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    cat > not-writable.txt <<EOF
+add something
+EOF
+    chmod a-w not-writable.txt
+
+    cat > expect.cmd <<EOF
+set timeout 3
+spawn lint-commit-msg not-writable.txt
+
+expect "Continue anyway? "
+send -- "edit\n"
+expect "Invalid response!"
+expect "Continue anyway? "
+send -- "no\n"
+
+expect eof
+EOF
+
+    echo a > a.txt; git add a.txt
+
+    # Using expect makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway? [yes/no] "
+    stdout_not_contains "Continue anyway? [yes/no/edit] "
+}
+
+test_invalid_editor() {
+    unset LCM_INTERACTIVE # Ensure this is unset.
+
+    init_git_repo
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1" || exit
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    cat > expect.cmd <<EOF
+set timeout 5
+spawn git commit --file ../msg.txt
+
+expect "Continue anyway? "
+send -- "edit\n"
+expect "Continue anyway? "
+send -- "no\n"
+
+expect eof
+EOF
+
+    echo a > a.txt; git add a.txt
+
+    export EDITOR='nosuchcommand'
+
+    # Using expect makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway? [yes/no/edit] "
+    stdout_contains "ERROR: failed to edit commit message using 'nosuchcommand'"
+
+    stdout_contains "Aborting commit!"
+    git diff --name-only --staged | grep --quiet "a\.txt" ||
+        fail "a.txt should still be staged"
+}
+
+test_edit_message() {
+    unset LCM_INTERACTIVE # Ensure this is unset.
+
+    init_git_repo
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1" || exit
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    cat > expect.cmd <<EOF
+set timeout 3
+spawn git commit --file ../msg.txt
+
+expect "Continue anyway? "
+send -- "edit\n"
+
+expect eof
+EOF
+
+    echo a > a.txt; git add a.txt
+
+    # Simulate interactive editing of the commit message
+    export EDITOR='sed -i -e s/delete/Delete/'
+
+    # Using expect makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway? [yes/no/edit] "
+
+    stdout_contains "lint-commit-msg: commit message OK"
+    git diff --name-only --staged | grep --quiet "a\.txt" &&
+        fail "a.txt should not be staged anymore"
+    git log --oneline | grep --quiet "redundant SQL tables" ||
+        fail "There's no commit made at all"
+    git log --oneline | grep --quiet "Delete redundant SQL tables" ||
+        {
+            fail "There's no commit with the correct (edited) commit message"
+            git log --oneline
+        }
+}

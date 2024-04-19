@@ -19,7 +19,7 @@ ERROR: commit message not properly formatted
 - line 1: subject not capitalized
   add first version of REST client and instructions how to use it with HTTPS
 
-Continue anyway? [yes/no] no
+Continue anyway? [yes/no/edit] no
 Aborting commit!
 Commit message saved in .git/lint-commit-msg.MSG
 $
@@ -159,6 +159,9 @@ The following sections describes each configuration variable and
 | `LCM_COLOR` | Whether to use colored output. Options: `always`, `never`, `auto`. With `auto` colors are used if printing to terminal). | `auto` |
 
 The variables above will also accept values `true` (alias for `always`) and `false` (alias for `never`).
+
+`lint-commit-msg` also inspects `GIT_EDITOR`, `VISUAL`, and `EDITOR` (in this order) for a text editor
+to launch if the user wishes to edit an invalid commit message interactively.
 
 ### Modifying rules
 

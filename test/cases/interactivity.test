@@ -45,7 +45,7 @@ EOF
     chmod u+x .git/hooks/commit-msg
 
     cat > expect.cmd <<EOF
-set timeout -1
+set timeout 3
 spawn git commit --file ../msg.txt
 
 expect "Continue anyway? "
@@ -65,6 +65,9 @@ EOF
     stdout_contains "Continue anyway?"
     stdout_contains "Aborting commit!"
     stdout_contains "Commit message saved in .git/lint-commit-msg.MSG"
+
+    git diff --name-only --staged | grep --quiet "a\.txt" ||
+        fail "a.txt should still be staged"
 }
 
 test_never_within_terminal() {
@@ -83,7 +86,7 @@ test_always() {
     export LCM_INTERACTIVE=always
 
     cat > expect.cmd <<EOF
-set timeout -1
+set timeout 3
 spawn lint-commit-msg ../msg.txt
 
 expect "Continue anyway? "
@@ -105,7 +108,7 @@ test_true() {
     export LCM_INTERACTIVE=true
 
     cat > expect.cmd <<EOF
-set timeout -1
+set timeout 3
 spawn lint-commit-msg ../msg.txt
 
 expect "Continue anyway? "
@@ -135,7 +138,7 @@ EOF
     chmod u+x .git/hooks/commit-msg
 
     cat > expect.cmd <<EOF
-set timeout -1
+set timeout 3
 spawn git commit --file ../msg.txt
 
 expect "Continue anyway? "
@@ -159,4 +162,51 @@ EOF
 
     git diff --name-only --staged | grep --quiet "a\.txt" &&
         fail "a.txt should not be staged anymore"
+    git log --oneline | grep --quiet "invalid commit message" ||
+        fail "There should be a commit with the given message."
+}
+
+test_reply_yes_after_misstype() {
+    unset LCM_INTERACTIVE # Ensure this is unset.
+
+    init_git_repo
+    cat > .git/hooks/commit-msg <<'EOF'
+#!/bin/sh
+
+lint-commit-msg "$1" || exit
+EOF
+    chmod u+x .git/hooks/commit-msg
+
+    cat > expect.cmd <<EOF
+set timeout 3
+spawn git commit --file ../msg.txt
+
+expect "Continue anyway? "
+send -- "ues\n"
+expect "Invalid response!"
+expect "Continue anyway? "
+send -- "yes\n"
+
+expect eof
+EOF
+
+    echo a > a.txt; git add a.txt
+
+    # Using expect makes lint-commit-msg think its stdout is terminal
+    # but also makes the output go to stdout.
+    call expect expect.cmd
+    # Cannot test the exit code because expect returns 0 as its exit code.
+    stdout_contains "ERROR: commit message not properly formatted"
+    stdout_contains "- line 1: subject not capitalized"
+    stdout_contains "Continue anyway?"
+    stdout_contains "Invalid response!"
+    stdout_not_contains "Aborting commit!"
+    stdout_not_contains "Commit message saved in .git/lint-commit-msg.MSG"
+    stdout_contains "1 file changed"
+
+    git diff --name-only --staged | grep --quiet "a\.txt" &&
+        fail "a.txt should not be staged anymore"
+    git log --oneline | grep --quiet "invalid commit message" ||
+        fail "There should be a commit with the given message."
+
 }

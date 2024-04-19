@@ -24,9 +24,6 @@
 #
 # lint-commit-msg @{version information} (placeholder for making releases)
 #
-# TODO: allow the user to edit the message if it contains errors
-#  - note that this doesn't work if the input comes from stdin
-#  - text editor preference: GIT_EDITOR, VISUAL, EDITOR, vi (or nano)
 # TODO: check for leading whitespace in the subject line
 # TODO: Note that IDEs are typically started from a menu or otherwise "graphically"
 #   which might result in PATH not containing the entries set in the user specific
@@ -34,6 +31,7 @@
 #   in PATH when a commit is made from within an IDE. Not sure if there's anything
 #   else to do about it than mention this in the documentation.
 # TODO: Add the GitHub URL to usage output.
+# TODO: Move the removal of the temporary directory into an exit trap.
 
 EXIT_CODE_LINTING_ERROR=1
 EXIT_CODE_USER_ERROR=2
@@ -281,388 +279,437 @@ tmp_dir=$(mktemp -d --tmpdir lcm.XXX)
 raw_input_file="${tmp_dir}/raw-commit-msg"
 cleaned_input_file="${tmp_dir}/cleaned-commit-msg"
 
-# TODO: add interactive editing
-# Copy the input to a temporary file (remember that the input
-# might be stdin in which case it can be read only once).
-cat "${input_file}" > "${raw_input_file}"
-(
-    # Unset Git environment variables (in this subshell) to ensure
-    # the cleanup is done "fully isolated" from the Git repository
-    # where we're making the actual commit.
-    unset "${!GIT@}"
+while true; do
+    # Copy the input to a temporary file (remember that the input
+    # might be stdin in which case it can be read only once).
+    cat "${input_file}" > "${raw_input_file}"
 
-    cd "${tmp_dir}" || exit
-    git init --initial-branch=main --quiet repo || exit
-    cd repo || exit
-    git -c "user.name=John Doe" -c "user.email=john.doe@example.com" \
-        commit --quiet --allow-empty --allow-empty-message \
-        --file="${raw_input_file}" --cleanup="${cleanup_mode}" || exit
-    git log --format=format:%B -n 1 HEAD > "${cleaned_input_file}" || exit
-) || unexpected_error "failed to clean up commit message"
-rm -rf "${tmp_dir}/repo"
+    (
+        # Unset Git environment variables (in this subshell) to ensure
+        # the cleanup is done "fully isolated" from the Git repository
+        # where we're making the actual commit.
+        unset "${!GIT@}"
 
-if [ "${_LCM_DEBUG}" = "true" ]
-then
-    echo "------------ raw message -----------------"
-    cat -A "${tmp_dir}/raw-commit-msg"
-    echo "---------- cleaned message ---------------"
-    cat -A "${cleaned_input_file}"
-    echo "------------------------------------------"
-fi
+        cd "${tmp_dir}" || exit
+        git init --initial-branch=main --quiet repo || exit
+        cd repo || exit
+        git -c "user.name=John Doe" -c "user.email=john.doe@example.com" \
+            commit --quiet --allow-empty --allow-empty-message \
+            --file="${raw_input_file}" --cleanup="${cleanup_mode}" || exit
+        git log --format=format:%B -n 1 HEAD > "${cleaned_input_file}" || exit
+    ) || unexpected_error "failed to clean up commit message"
+    rm -rf "${tmp_dir}/repo"
 
-# Define error types and create data structures. For each error type
-#  - create an error type variable (int): e.g. error_subject_line_too_long=2
-#  - set error count for that type to zero: e.g. error_counts[2]=0
-#  - set name of an environment variable that can be used to suppress checking
-#    for that error type: e.g. ignore_vars[2]=LCM_IGNORE_SUBJECT_LINE_TOO_LONG
-# Note that using ordinary arrays (with numeric keys) is intentional. Many Mac
-# users still have Bash version 3 which doesn't support associative arrays.
-error_counts=()
-ignore_vars=()
-error_type_index=0
-for error_type in \
-    all \
-        subject_line_too_short \
-        subject_line_too_long \
-        subject_line_ends_in_period \
-        subject_not_capitalized \
-        invalid_subject_line_prefix \
-        subject_mood \
-        body_line_too_long \
-        contains_tabs \
-        trailing_whitespace \
-        missing_final_eol \
-        2nd_line_not_blank \
-        line_count_is_2
-do
-    eval "error_${error_type}=${error_type_index}"
-    error_counts[${error_type_index}]=0
-    ignore_vars[${error_type_index}]="LCM_IGNORE_$(echo "${error_type}" | tr a-z A-Z)"
-    ((error_type_index++))
-done
-
-if [ "${_LCM_DEBUG}" = "true" ]
-then
-    echo "Error types"
-    declare -p ${!error_*} | grep --color=never '^declare --'
-    echo "Data structures"
-    declare -p error_counts ignore_vars
-fi
-
-# error_output will contain the lines that are printed in the end if there
-# were any linting errors. There are two types of items in the array:
-# error messages and the contents of corresponding input file lines. For example,
-#   error_output[0]="line 1: Subject line ends in a period (.)"
-#   error_output[1]="line 1: Subject line too short"
-#   error_output[2]="My subj."
-#   error_output[3]="line 3: trailing whitespace"
-#   error_output[4]="Oops, there's space after me. "
-error_output=()
-
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
-# Deduce whether lint-commit-msg is invoked as part of (commit-msg) hook
-# or executed "standalone" to e.g. lint an existing commit message.
-is_committing() {
-    # This heuristic seems to work... but it wouldn't hurt to have
-    # something more robust (and documented) for this.
-    [ -n "${repo_root}" ] &&
-        { [ -n "${GIT_DIR}" ] || [ -n "${GIT_INDEX_FILE}" ]; }
-}
-
-# stdout_is_terminal is used to decide if we should activate
-# interactive mode when LCM_INTERACTIVE is set to 'auto'.
-stdout_is_terminal() {
-    [ -t 1 ]
-}
-
-# append_error adds a message about a (linting) error to
-# the list of errors that will be reported to the user.
-append_error() {
-    [ $# -eq 3 ] ||
-        unexpected_error "${FUNCNAME}: wrong number of arguments ($#): $(printf "<%s>" "$@")"
-    local error_type="$1"
-    local error_msg="$2"
-
-    # Can be an empty string if the error is not related to any particular line.
-    local line_no="$3"
-
-    local ignore_var=${ignore_vars[${error_type}]}
-    if [ "${!ignore_var}" = "true" ]
+    if [ "${_LCM_DEBUG}" = "true" ]
     then
-        # TODO: should this output be removed (or made configurable)?
-        echo "lint-commit-msg: (intentionally) ignoring error (${ignore_var}=true)"
-        return
+        echo "------------ raw message -----------------"
+        cat -A "${raw_input_file}"
+        echo "---------- cleaned message ---------------"
+        cat -A "${cleaned_input_file}"
+        echo "------------------------------------------"
     fi
 
-    # Error type and line number should both be integers.
-    [ "${error_type}" -eq "${error_type}" ] 2>/dev/null ||
-        unexpected_error "${FUNCNAME}: invalid error_type: '${error_type}'"
-    if [ -n "${line_no}" ]
+    # Define error types and create data structures. For each error type
+    #  - create an error type variable (int): e.g. error_subject_line_too_long=2
+    #  - set error count for that type to zero: e.g. error_counts[2]=0
+    #  - set name of an environment variable that can be used to suppress checking
+    #    for that error type: e.g. ignore_vars[2]=LCM_IGNORE_SUBJECT_LINE_TOO_LONG
+    # Note that using ordinary arrays (with numeric keys) is intentional. Many Mac
+    # users still have Bash version 3 which doesn't support associative arrays.
+    error_counts=()
+    ignore_vars=()
+    error_type_index=0
+    for error_type in \
+        all \
+            subject_line_too_short \
+            subject_line_too_long \
+            subject_line_ends_in_period \
+            subject_not_capitalized \
+            invalid_subject_line_prefix \
+            subject_mood \
+            body_line_too_long \
+            contains_tabs \
+            trailing_whitespace \
+            missing_final_eol \
+            2nd_line_not_blank \
+            line_count_is_2
+    do
+        eval "error_${error_type}=${error_type_index}"
+        error_counts[${error_type_index}]=0
+        ignore_vars[${error_type_index}]="LCM_IGNORE_$(echo "${error_type}" | tr a-z A-Z)"
+        ((error_type_index++))
+    done
+
+    if [ "${_LCM_DEBUG}" = "true" ]
     then
-        [ "${line_no}" -eq "${line_no}" ] 2>/dev/null ||
-            unexpected_error "${FUNCNAME}: invalid line number: '${line_number}'"
-        error_output+=( "$(printf "line %d: %s\n" "${line_no}" "${error_msg}")" )
-    else
-        error_output+=( "${error_msg}" )
+        echo "Error types"
+        declare -p ${!error_*} | grep --color=never '^declare --'
+        echo "Data structures"
+        declare -p error_counts ignore_vars
     fi
 
-    error_counts[${error_type}]=$(( ${error_counts[${error_type}]} + 1 ))
-    error_counts[${error_all}]=$(( ${error_counts[${error_all}]} + 1 ))
-}
+    # error_output will contain the lines that are printed in the end if there
+    # were any linting errors. There are two types of items in the array:
+    # error messages and the contents of corresponding input file lines. For example,
+    #   error_output[0]="line 1: Subject line ends in a period (.)"
+    #   error_output[1]="line 1: Subject line too short"
+    #   error_output[2]="My subj."
+    #   error_output[3]="line 3: trailing whitespace"
+    #   error_output[4]="Oops, there's space after me. "
+    error_output=()
 
-append_erroneous_line() {
-    [ $# -eq 1 ] ||
-        unexpected_error "${FUNCNAME}: wrong number of arguments ($#): $(printf "<%s>" "$@")"
-    # Add leading whitespace which can be used to distinguish erroneous lines from error messages.
-    error_output+=( "  $1" )
-}
-
-check_subject_line() {
-    local line="$1"
-
-    # Ends in period check
-    [[ ${line} =~ "."$ ]] &&
-        append_error "${error_subject_line_ends_in_period}" "subject line ends in a period (.)" 1
-
-    # Min length check
-    [ "${#line}" -lt "${LCM_SUBJECT_LINE_MIN_LENGTH}" ] &&
-        append_error \
-            "${error_subject_line_too_short}" \
-            "subject line too short (${#line}), min length is ${LCM_SUBJECT_LINE_MIN_LENGTH}" \
-            1
-
-    # Max length check
-    [ "${#line}" -gt "${LCM_SUBJECT_LINE_MAX_LENGTH}" ] &&
-        append_error \
-            "${error_subject_line_too_long}" \
-            "subject line too long (${#line}), max length is ${LCM_SUBJECT_LINE_MAX_LENGTH}" \
-            1
-
-    # Prefix regex check
-    local subject="${line}"
-    if [ -n "${LCM_SUBJECT_LINE_PREFIX_REGEX}" ]
-    then
-        local prefix_regex="^${LCM_SUBJECT_LINE_PREFIX_REGEX}"
-        [[ "${line}" =~ ${prefix_regex} ]]
-        case $? in
-            0)
-                local match_length="${#BASH_REMATCH[0]}"
-                subject="${line:match_length}"
-                ;;
-            1)
-                local error_msg
-                if [ -n "${LCM_SUBJECT_LINE_PREFIX_HELP}" ]
-                then
-                    printf -v error_msg "${LCM_SUBJECT_LINE_PREFIX_HELP}"
-                else
-                    error_msg="subject line does not match regex: '${prefix_regex}'"
-                fi
-                append_error \
-                    "${error_invalid_subject_line_prefix}" \
-                    "${error_msg}" \
-                    1
-                return
-                ;;
-            2)
-                echo "lint-commit-msg: ERROR: \$LCM_SUBJECT_LINE_PREFIX_REGEX syntactically incorrect: '${prefix_regex}'"
-                exit "${EXIT_CODE_USER_ERROR}"
-                ;;
-            *)
-                unexpected_error "unexpected error executing subject line prefix regex"
-                ;;
-        esac
-    fi
-    # NOTE! If the regex didn't match the subject line we don't know which part of the subject line to
-    # check for capitalization and mood. So, continue here only if the regex matched to avoid raising
-    # errors that only confuse the user.
-
-    # Capitalization check
-    [[ ${subject} =~ ^[a-z] ]] &&
-        append_error \
-            "${error_subject_not_capitalized}" \
-            "subject${LCM_SUBJECT_LINE_PREFIX_REGEX:+ \"${subject}\"} not capitalized" \
-            1
-
-    # Subject mood check
-    local subject_first_word=${subject%% *}
-    shopt -s nocasematch
-    if [[ "${subject_first_word}" =~ (ed|ing|[^s]s)$ ]] ||
-           [[ "${subject_first_word}" =~ ^(wrote|made|hid|sent|gave|threw|bound|took)$ ]]
-    then
-        local invalid_suffix
-        case "${BASH_REMATCH[0]}" in
-            ed|ing)
-                invalid_suffix="${BASH_REMATCH[0]}"
-                ;;
-            [^s]s)
-                # This special handling is needed to not flag verbs that end in 's'
-                # in their imperative mood e.g. "suppress". As far as I can think
-                # such verbs always end in double 's' (miss, kiss, bless).
-                invalid_suffix="s"
-                ;;
-            *)
-                # ${subject_first_word} is one of the detected irregular
-                # verbs in past tense (e.g. "wrote")
-                invalid_suffix="ed"
-        esac
-
-        append_error \
-            "${error_subject_mood}" \
-            "verb '${subject_first_word}' in the subject not in imperative mood,
-          use for example 'Add' instead of 'Add${invalid_suffix}'" \
-            1
-    fi
-    shopt -u nocasematch
-}
-
-# Note that an empty commit message has 0 lines and thus the following
-# while loop body will not be executed (and no errors will be reported).
-line_no=1
-while IFS= read -r line
-do
-    error_count=${error_counts[${error_all}]}
-
-    # Special checks for the first two lines
-    case "${line_no}" in
-        1)
-            # Subject line
-            check_subject_line "${line}"
-            ;;
-        2)
-            # Blank line separating subject and body
-            [ -n "${line}" ] &&
-                append_error "${error_2nd_line_not_blank}" "should be blank (separates subject line and body)" "${line_no}"
-            ;;
-    esac
-
-    # Checks for all lines.
-    if [[ ${line} =~ $'\t' ]]
-    then
-        append_error "${error_contains_tabs}" "tab character(s) found" "${line_no}"
-    fi
-
-    ends_in_space_or_tab="[ "$'\t'']$'
-    if [[ ${line} =~ ${ends_in_space_or_tab} ]]
-    then
-        append_error "${error_trailing_whitespace}" "trailing whitespace" "${line_no}"
-    fi
-
-    # check_subject_line already checks the length of the first line
-    if [ "${line_no}" -ne 1 ] && [ "${#line}" -gt "${LCM_BODY_LINE_MAX_LENGTH}" ]
-    then
-        append_error \
-            "${error_body_line_too_long}" \
-            "body line too long (${#line}), max length is ${LCM_BODY_LINE_MAX_LENGTH}" \
-            "${line_no}"
-    fi
-
-    # Append the invalid line so that it will be printed below the errors it contains.
-    [ ${error_counts[${error_all}]} -gt ${error_count} ] && append_erroneous_line "${line}"
-    ((line_no++))
-done < "${cleaned_input_file}"
-
-# Note that git cleans up the commit message that the user supplies
-# (see --cleanup option of git commit for details). So, normally
-# (practically always) we don't have to worry about missing final
-# end of line (EOL), trailing empty lines, etc. but we'll check them
-# here anyways.
-if true
-then
-    [ -s "${cleaned_input_file}" ] && [ -n "$(tail -c 1 "${cleaned_input_file}")" ] && {
-        append_error "${error_missing_final_eol}" \
-                     "missing EOL at end of commit message" \
-                     ""
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+    # Deduce whether lint-commit-msg is invoked as part of (commit-msg) hook
+    # or executed "standalone" to e.g. lint an existing commit message.
+    is_committing() {
+        # This heuristic seems to work... but it wouldn't hurt to have
+        # something more robust (and documented) for this.
+        [ -n "${repo_root}" ] &&
+            { [ -n "${GIT_DIR}" ] || [ -n "${GIT_INDEX_FILE}" ]; }
     }
 
-    line_count=$(cat "${cleaned_input_file}" | wc -l)
-    line_count_is_2_msg="commit message should be either
+    # stdout_is_terminal is used to decide if we should activate
+    # interactive mode when LCM_INTERACTIVE is set to 'auto'.
+    stdout_is_terminal() {
+        [ -t 1 ]
+    }
+
+    # input_is_writable_file is used to decide whether the user is offered
+    # the possibility to edit an invalid commit message (if in interactive mode).
+    input_is_writable_file() {
+        [ -f "${input_file}" ] && [ -w "${input_file}" ]
+    }
+
+    # append_error adds a message about a (linting) error to
+    # the list of errors that will be reported to the user.
+    append_error() {
+        [ $# -eq 3 ] ||
+            unexpected_error "${FUNCNAME}: wrong number of arguments ($#): $(printf "<%s>" "$@")"
+        local error_type="$1"
+        local error_msg="$2"
+
+        # Can be an empty string if the error is not related to any particular line.
+        local line_no="$3"
+
+        local ignore_var=${ignore_vars[${error_type}]}
+        if [ "${!ignore_var}" = "true" ]
+        then
+            # TODO: should this output be removed (or made configurable)?
+            echo "lint-commit-msg: (intentionally) ignoring error (${ignore_var}=true)"
+            return
+        fi
+
+        # Error type and line number should both be integers.
+        [ "${error_type}" -eq "${error_type}" ] 2>/dev/null ||
+            unexpected_error "${FUNCNAME}: invalid error_type: '${error_type}'"
+        if [ -n "${line_no}" ]
+        then
+            [ "${line_no}" -eq "${line_no}" ] 2>/dev/null ||
+                unexpected_error "${FUNCNAME}: invalid line number: '${line_number}'"
+            error_output+=( "$(printf "line %d: %s\n" "${line_no}" "${error_msg}")" )
+        else
+            error_output+=( "${error_msg}" )
+        fi
+
+        error_counts[${error_type}]=$(( ${error_counts[${error_type}]} + 1 ))
+        error_counts[${error_all}]=$(( ${error_counts[${error_all}]} + 1 ))
+    }
+
+    append_erroneous_line() {
+        [ $# -eq 1 ] ||
+            unexpected_error "${FUNCNAME}: wrong number of arguments ($#): $(printf "<%s>" "$@")"
+        # Add leading whitespace which can be used to distinguish erroneous lines from error messages.
+        error_output+=( "  $1" )
+    }
+
+    check_subject_line() {
+        local line="$1"
+
+        # Ends in period check
+        [[ ${line} =~ "."$ ]] &&
+            append_error "${error_subject_line_ends_in_period}" "subject line ends in a period (.)" 1
+
+        # Min length check
+        [ "${#line}" -lt "${LCM_SUBJECT_LINE_MIN_LENGTH}" ] &&
+            append_error \
+                "${error_subject_line_too_short}" \
+                "subject line too short (${#line}), min length is ${LCM_SUBJECT_LINE_MIN_LENGTH}" \
+                1
+
+        # Max length check
+        [ "${#line}" -gt "${LCM_SUBJECT_LINE_MAX_LENGTH}" ] &&
+            append_error \
+                "${error_subject_line_too_long}" \
+                "subject line too long (${#line}), max length is ${LCM_SUBJECT_LINE_MAX_LENGTH}" \
+                1
+
+        # Prefix regex check
+        local subject="${line}"
+        if [ -n "${LCM_SUBJECT_LINE_PREFIX_REGEX}" ]
+        then
+            local prefix_regex="^${LCM_SUBJECT_LINE_PREFIX_REGEX}"
+            [[ "${line}" =~ ${prefix_regex} ]]
+            case $? in
+                0)
+                    local match_length="${#BASH_REMATCH[0]}"
+                    subject="${line:match_length}"
+                    ;;
+                1)
+                    local error_msg
+                    if [ -n "${LCM_SUBJECT_LINE_PREFIX_HELP}" ]
+                    then
+                        printf -v error_msg "${LCM_SUBJECT_LINE_PREFIX_HELP}"
+                    else
+                        error_msg="subject line does not match regex: '${prefix_regex}'"
+                    fi
+                    append_error \
+                        "${error_invalid_subject_line_prefix}" \
+                        "${error_msg}" \
+                        1
+                    return
+                    ;;
+                2)
+                    echo "lint-commit-msg: ERROR: \$LCM_SUBJECT_LINE_PREFIX_REGEX syntactically incorrect: '${prefix_regex}'"
+                    exit "${EXIT_CODE_USER_ERROR}"
+                    ;;
+                *)
+                    unexpected_error "unexpected error executing subject line prefix regex"
+                    ;;
+            esac
+        fi
+        # NOTE! If the regex didn't match the subject line we don't know which part of the subject line to
+        # check for capitalization and mood. So, continue here only if the regex matched to avoid raising
+        # errors that only confuse the user.
+
+        # Capitalization check
+        [[ ${subject} =~ ^[a-z] ]] &&
+            append_error \
+                "${error_subject_not_capitalized}" \
+                "subject${LCM_SUBJECT_LINE_PREFIX_REGEX:+ \"${subject}\"} not capitalized" \
+                1
+
+        # Subject mood check
+        local subject_first_word=${subject%% *}
+        shopt -s nocasematch
+        if [[ "${subject_first_word}" =~ (ed|ing|[^s]s)$ ]] ||
+               [[ "${subject_first_word}" =~ ^(wrote|made|hid|sent|gave|threw|bound|took)$ ]]
+        then
+            local invalid_suffix
+            case "${BASH_REMATCH[0]}" in
+                ed|ing)
+                    invalid_suffix="${BASH_REMATCH[0]}"
+                    ;;
+                [^s]s)
+                    # This special handling is needed to not flag verbs that end in 's'
+                    # in their imperative mood e.g. "suppress". As far as I can think
+                    # such verbs always end in double 's' (miss, kiss, bless).
+                    invalid_suffix="s"
+                    ;;
+                *)
+                    # ${subject_first_word} is one of the detected irregular
+                    # verbs in past tense (e.g. "wrote")
+                    invalid_suffix="ed"
+            esac
+
+            append_error \
+                "${error_subject_mood}" \
+                "verb '${subject_first_word}' in the subject not in imperative mood,
+          use for example 'Add' instead of 'Add${invalid_suffix}'" \
+                1
+        fi
+        shopt -u nocasematch
+    }
+
+    # Note that an empty commit message has 0 lines and thus the following
+    # while loop body will not be executed (and no errors will be reported).
+    line_no=1
+    while IFS= read -r line
+    do
+        error_count=${error_counts[${error_all}]}
+
+        # Special checks for the first two lines
+        case "${line_no}" in
+            1)
+                # Subject line
+                check_subject_line "${line}"
+                ;;
+            2)
+                # Blank line separating subject and body
+                [ -n "${line}" ] &&
+                    append_error "${error_2nd_line_not_blank}" "should be blank (separates subject line and body)" "${line_no}"
+                ;;
+        esac
+
+        # Checks for all lines.
+        if [[ ${line} =~ $'\t' ]]
+        then
+            append_error "${error_contains_tabs}" "tab character(s) found" "${line_no}"
+        fi
+
+        ends_in_space_or_tab="[ "$'\t'']$'
+        if [[ ${line} =~ ${ends_in_space_or_tab} ]]
+        then
+            append_error "${error_trailing_whitespace}" "trailing whitespace" "${line_no}"
+        fi
+
+        # check_subject_line already checks the length of the first line
+        if [ "${line_no}" -ne 1 ] && [ "${#line}" -gt "${LCM_BODY_LINE_MAX_LENGTH}" ]
+        then
+            append_error \
+                "${error_body_line_too_long}" \
+                "body line too long (${#line}), max length is ${LCM_BODY_LINE_MAX_LENGTH}" \
+                "${line_no}"
+        fi
+
+        # Append the invalid line so that it will be printed below the errors it contains.
+        [ ${error_counts[${error_all}]} -gt ${error_count} ] && append_erroneous_line "${line}"
+        ((line_no++))
+    done < "${cleaned_input_file}"
+
+    # Note that git cleans up the commit message that the user supplies
+    # (see --cleanup option of git commit for details). So, normally
+    # (practically always) we don't have to worry about missing final
+    # end of line (EOL), trailing empty lines, etc. but we'll check them
+    # here anyways.
+    if true
+    then
+        [ -s "${cleaned_input_file}" ] && [ -n "$(tail -c 1 "${cleaned_input_file}")" ] && {
+            append_error "${error_missing_final_eol}" \
+                         "missing EOL at end of commit message" \
+                         ""
+        }
+
+        line_count=$(cat "${cleaned_input_file}" | wc -l)
+        line_count_is_2_msg="commit message should be either
   - a single (subject) line OR
   - subject line + blank line + body"
-    [ "${line_count}" -eq 2 ] &&
-        append_error "${error_line_count_is_2}" "${line_count_is_2_msg}" ""
-fi
-
-# Print the errors as well as instructions how to retry while ignoring some (or all) errors.
-if [ ${error_counts[${error_all}]} -gt 0 ]
-then
-    printf "${color_red}%s${color_reset}\n" "ERROR: commit message not properly formatted"
-    for output in "${error_output[@]}"
-    do
-        if [ "${output:0:1}" = " " ]
-        then
-            # Commit message lines can be detected by the leading
-            # whitespace added by append_erroneous_line.
-            printf "%s\n" "${output}"
-        else
-            printf -- "${color_red}- %s${color_reset}\n" "${output}"
-        fi
-    done
-    echo
-
-    if [ "${LCM_INTERACTIVE}" = "always" ] ||
-           { [ "${LCM_INTERACTIVE}" = "auto" ] && stdout_is_terminal && is_committing; }
-    then
-        # stdin in commit-msg hook is set to /dev/null by Git so
-        # use another file descriptor for reading user input.
-        exec 5</dev/tty
-        printf "Continue anyway? [yes/no] "
-        read -u 5 reply
-        prompt_exit_code=$?
-        exec 5>&-
-
-        if [ "${prompt_exit_code}" -eq 0 ] && [ "${reply}" = "yes" ]
-        then
-            rm -rf "${tmp_dir}"
-            exit 0
-        fi
+        [ "${line_count}" -eq 2 ] &&
+            append_error "${error_line_count_is_2}" "${line_count_is_2_msg}" ""
     fi
 
-    if is_committing
+    # Print the errors as well as instructions how to retry while ignoring some (or all) errors.
+    if [ ${error_counts[${error_all}]} -gt 0 ]
     then
-        echo "Aborting commit!"
+        printf "${color_red}%s${color_reset}\n" "ERROR: commit message not properly formatted"
+        for output in "${error_output[@]}"
+        do
+            if [ "${output:0:1}" = " " ]
+            then
+                # Commit message lines can be detected by the leading
+                # whitespace added by append_erroneous_line.
+                printf "%s\n" "${output}"
+            else
+                printf -- "${color_red}- %s${color_reset}\n" "${output}"
+            fi
+        done
+        echo
 
-        # Tell the user where they can retrieve the commit message so they don't lose it
-        # (they may have written it in an editor opened by 'git commit' or 'git merge').
-        # Note that we could simply point the user to .git/COMMIT_EDITMSG but that wouldn't
-        # help when running 'git merge'. There's .git/MERGE_MSG which is used with 'git merge'
-        # but unfortunately that file won't have the commit message after an aborted
-        # (merge) commit when the commit message is written interactively (in the editor
-        # opened by Git). So, it seems we're forced to use our own custom backup file
-        # for the commit message.
-        cp "${raw_input_file}" "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}"
-        echo "Commit message saved in .git/${_LCM_MSG_BACKUP_FILE}"
-    fi
+        if [ "${LCM_INTERACTIVE}" = "always" ] ||
+               { [ "${LCM_INTERACTIVE}" = "auto" ] && stdout_is_terminal && is_committing; }
+        then
+            while true;
+            do
+                # stdin in commit-msg hook is set to /dev/null by Git so
+                # use another file descriptor for reading user input.
+                exec 5</dev/tty
+                if input_is_writable_file
+                then
+                    printf "Continue anyway? [yes/no/edit] "
+                else
+                    printf "Continue anyway? [yes/no] "
+                fi
+                reply=""
+                read -u 5 reply
+                prompt_exit_code=$?
+                exec 5>&-
 
-    # Keep the error output shorter
-    if false
-    then
-        cat <<EOF
+                # Exit if user presses Ctrl-D (EOF)
+                [ "${prompt_exit_code}" -eq 0 ] || exit "${EXIT_CODE_LINTING_ERROR}"
+
+                if [ "${reply}" = "yes" ] || [ "${reply}" = "no" ] || { input_is_writable_file && [ "${reply}" = edit ]; }
+                then
+                    break
+                else
+                    echo "Invalid response!"
+                fi
+            done
+
+            if [ "${reply}" = "yes" ]
+            then
+                rm -rf "${tmp_dir}"
+                exit 0
+            elif [ "${reply}" = "edit" ]
+            then
+                if [ -n "${GIT_EDITOR}" ] && [ "${GIT_EDITOR}" != ":" ]
+                then
+                    chosen_editor="${GIT_EDITOR}"
+                else
+                    chosen_editor="${VISUAL:-${EDITOR}}"
+                fi
+                if [ -z "${chosen_editor}" ]
+                then
+                    chosen_editor=nano
+                    echo "No editor set in \$GIT_EDITOR, \$VISUAL, or \$EDITOR."
+                    echo "Opening default editor '${chosen_editor}'..."
+                    sleep 3
+                fi
+                ${chosen_editor} "${input_file}" ||
+                    {
+                        echo "ERROR: failed to edit commit message using '${chosen_editor}'"
+                        sleep 3
+                    }
+                echo
+                continue
+            fi
+        fi
+
+        if is_committing
+        then
+            echo "Aborting commit!"
+
+            # Tell the user where they can retrieve the commit message so they don't lose it
+            # (they may have written it in an editor opened by 'git commit' or 'git merge').
+            # Note that we could simply point the user to .git/COMMIT_EDITMSG but that wouldn't
+            # help when running 'git merge'. There's .git/MERGE_MSG which is used with 'git merge'
+            # but unfortunately that file won't have the commit message after an aborted
+            # (merge) commit when the commit message is written interactively (in the editor
+            # opened by Git). So, it seems we're forced to use our own custom backup file
+            # for the commit message.
+            cp "${raw_input_file}" "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}"
+            echo "Commit message saved in .git/${_LCM_MSG_BACKUP_FILE}"
+        fi
+
+        # Keep the error output shorter
+        if false
+        then
+            cat <<EOF
 
 To ignore the errors set the corresponding
 environment variable(s) to 'true' and retry:
 EOF
-        for i in ${!error_counts[@]}
-        do
-            if [ "${error_counts[${i}]}" -gt 0 ]
-            then
-                printf "  %s\n" "${ignore_vars[${i}]}"
-                example_error_var="${ignore_vars[${i}]}"
-            fi
-        done
-        printf "For example\n"
-        printf "  ${example_error_var}=true git commit ...\n"
+            for i in ${!error_counts[@]}
+            do
+                if [ "${error_counts[${i}]}" -gt 0 ]
+                then
+                    printf "  %s\n" "${ignore_vars[${i}]}"
+                    example_error_var="${ignore_vars[${i}]}"
+                fi
+            done
+            printf "For example\n"
+            printf "  ${example_error_var}=true git commit ...\n"
+        fi
+
+        rm -rf "${tmp_dir}"
+        exit "${EXIT_CODE_LINTING_ERROR}"
     fi
 
+    # Clean up
     rm -rf "${tmp_dir}"
-    exit "${EXIT_CODE_LINTING_ERROR}"
-fi
+    if is_committing && [ -f "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}" ]
+    then
+        rm "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}"
+    fi
 
-# Clean up
-rm -rf "${tmp_dir}"
-if is_committing && [ -f "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}" ]
-then
-    rm "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}"
-fi
-
-echo "lint-commit-msg: commit message OK"
-exit 0
+    echo "lint-commit-msg: commit message OK"
+    exit 0
+done # while true; do
