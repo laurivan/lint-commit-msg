@@ -30,8 +30,6 @@
 #   startup files (e.g. ~/.bashrc). This might result in lint-commit-msg not being
 #   in PATH when a commit is made from within an IDE. Not sure if there's anything
 #   else to do about it than mention this in the documentation.
-# TODO: Add the GitHub URL to usage output.
-# TODO: Move the removal of the temporary directory into an exit trap.
 
 EXIT_CODE_LINTING_ERROR=1
 EXIT_CODE_USER_ERROR=2
@@ -271,6 +269,16 @@ fi
 # To clean up the raw commit message exactly the same way as git does, create
 # a dummy commit in a throwaway git repository and pass the inferred cleanup
 # mode to 'git commit' (with --cleanup).
+tmp_dir=""
+exit_hook() {
+    if [ -d "${tmp_dir}" ]
+    then
+        [ "${_LCM_DEBUG}" = "true" ] && echo "Deleting temporary directory"
+        rm -rf "${tmp_dir}"
+    fi
+    [ "${_LCM_DEBUG}" = "true" ] && echo "Finished exit hook"
+}
+trap exit_hook EXIT
 tmp_dir=$(mktemp -d --tmpdir lcm.XXX)
 [ -d "${tmp_dir}" ] || {
      unexpected_error "failed to create temporary directory"
@@ -298,7 +306,6 @@ while true; do
             --file="${raw_input_file}" --cleanup="${cleanup_mode}" || exit
         git log --format=format:%B -n 1 HEAD > "${cleaned_input_file}" || exit
     ) || unexpected_error "failed to clean up commit message"
-    rm -rf "${tmp_dir}/repo"
 
     if [ "${_LCM_DEBUG}" = "true" ]
     then
@@ -636,7 +643,6 @@ while true; do
 
             if [ "${reply}" = "yes" ]
             then
-                rm -rf "${tmp_dir}"
                 exit 0
             elif [ "${reply}" = "edit" ]
             then
@@ -699,12 +705,10 @@ EOF
             printf "  ${example_error_var}=true git commit ...\n"
         fi
 
-        rm -rf "${tmp_dir}"
         exit "${EXIT_CODE_LINTING_ERROR}"
     fi
 
-    # Clean up
-    rm -rf "${tmp_dir}"
+    # Don't leave commit message backups (from earlier runs) lying around.
     if is_committing && [ -f "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}" ]
     then
         rm "${repo_root}/.git/${_LCM_MSG_BACKUP_FILE}"
