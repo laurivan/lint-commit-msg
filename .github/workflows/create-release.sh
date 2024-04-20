@@ -37,7 +37,7 @@ then
 fi
 
 mkdir -p build || exit 1
-sed -E "s/^# lint-commit-msg @\{version information\} .*$/# lint-commit-msg ${version} (${hash})/" \
+sed -E "s/@\{version information\}/${version} (${hash})/" \
     lint-commit-msg > build/lint-commit-msg
 
 

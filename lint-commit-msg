@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# lint-commit-msg @{version information}
+#
 # MIT License
 # Copyright (c) 2024 Lauri Vanhatalo
 #
@@ -20,16 +22,20 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-#
-#
-# lint-commit-msg @{version information} (placeholder for making releases)
-#
+
+
 # TODO: check for leading whitespace in the subject line
 # TODO: Note that IDEs are typically started from a menu or otherwise "graphically"
 #   which might result in PATH not containing the entries set in the user specific
 #   startup files (e.g. ~/.bashrc). This might result in lint-commit-msg not being
 #   in PATH when a commit is made from within an IDE. Not sure if there's anything
 #   else to do about it than mention this in the documentation.
+
+if [ "${_LCM_DEBUG}" = "true" ]
+then
+    echo "lint-commit-msg version: @{version information}"
+    echo "           Bash version: ${BASH_VERSION}"
+fi
 
 EXIT_CODE_LINTING_ERROR=1
 EXIT_CODE_USER_ERROR=2
