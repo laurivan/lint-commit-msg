@@ -75,7 +75,7 @@ Git repository's `commit-msg` hook. For this, there are a couple of approaches.
    ```sh
    mv lint-commit-msg ~/bin
    ```
-2. Add this line to your commit-msg hook which is by default `my-repo/.git/hooks/commit-msg`.
+2. Add the line below to your commit-msg hook which is by default `my-repo/.git/hooks/commit-msg`.
    ```sh
    lint-commit-msg "$1" || exit
    ```
@@ -121,7 +121,7 @@ ERROR: commit message not properly formatted
           use for example 'Add' instead of 'Added'
   created README file
 
-Continue anyway? [yes/no] no
+Continue anyway? [yes/no/edit] no
 Aborting commit!
 Commit message saved in .git/lint-commit-msg.MSG
 $ git commit -m "Create README file"
@@ -132,14 +132,15 @@ lint-commit-msg: commit message OK
 ```
 
 ## Advanced usage and configuration
-First, lint-commit-msg has sensible defaults so you can probably just start
-using it with minimal tweaking.
-That being said, `lint-commit-msg` is highly customizable which
-is achieved using environment variables either _per invocation_
+First, lint-commit-msg has sensible defaults so one can
+simply start using it with minimal or no fine tuning.
+That being said, `lint-commit-msg` is highly customizable.
+One can set environment variables either _per invocation_
 ```sh
 LCM_IGNORE_SUBJECT_NOT_CAPITALIZED=true git commit ...
 ```
-or more permanently by exporting the variables for example in the startup files of the user's shell.
+or more permanently by exporting variables.
+This can be done for example in the startup files of the user's shell.
 ```sh
 # ~/.bashrc
 export LCM_INTERACTIVE=never
@@ -148,8 +149,8 @@ export LCM_SUBJECT_LINE_MAX_LENGTH=55
 
 There are three categories of configuration:
 [general settings](#general-settings), variables for [modifying the linting rules](#modifying-rules), and variables for [ignoring them](#ignoring-rules).
-The following sections describes each configuration variable and
-[Examples](#examples) gives guidance on how to use them.
+The following sections describes each configuration variable.
+See [examples](#examples) for more guidance on how to use them.
 
 ### General settings
 
@@ -160,7 +161,8 @@ The following sections describes each configuration variable and
 
 The variables above will also accept values `true` (alias for `always`) and `false` (alias for `never`).
 
-`lint-commit-msg` also inspects `GIT_EDITOR`, `VISUAL`, and `EDITOR` (in this order) for a text editor
+`lint-commit-msg` also inspects environment variables
+`GIT_EDITOR`, `VISUAL`, and `EDITOR` (in this order) for a text editor
 to launch if the user wishes to edit an invalid commit message interactively.
 
 ### Modifying rules
@@ -209,7 +211,7 @@ Setting them to `false` is equivalent to not having them set at all.
 | `LCM_IGNORE_BODY_LINE_TOO_LONG` | Allow too long lines in the body of the commit message. |
 | `LCM_IGNORE_TABS` | Allow the commit message to contain tab characters. |
 | `LCM_IGNORE_TRAILING_WHITESPACE` | Allow the commit message to contain trailing whitespace. |
-| `LCM_IGNORE_MISSING_FINAL_EOL` | Allow the commit message to end with a character other than an [EOL](https://en.wikipedia.org/wiki/Newline) |
+| `LCM_IGNORE_MISSING_FINAL_EOL` | Allow the commit message to end with a character other than an [EOL](https://en.wikipedia.org/wiki/Newline). |
 | `LCM_IGNORE_2ND_LINE_NOT_BLANK` | Allow the 2nd line of the commit message contain text. |
 | `LCM_IGNORE_LINE_COUNT_IS_2` | Allow the commit message to be two lines long. |
 
@@ -287,7 +289,7 @@ lint-commit-msg "$1" || exit
 ```
 ```sh
 # Specify default values (different from internal defaults of lint-commit-msg)
-# but in a way that allows the user to override them when invoking 'git commit'
+# in a way that allows the user to override them when invoking 'git commit'
 : ${LCM_SUBJECT_LINE_MAX_LENGTH:=50}
 : ${LCM_BODY_LINE_MAX_LENGTH:=80}
 export LCM_SUBJECT_LINE_MAX_LENGTH LCM_BODY_LINE_MAX_LENGTH
