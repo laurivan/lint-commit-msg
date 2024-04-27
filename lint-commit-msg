@@ -35,6 +35,7 @@ if [ "${_LCM_DEBUG}" = "true" ]
 then
     echo "lint-commit-msg version: @{version information}"
     echo "           Bash version: ${BASH_VERSION}"
+    echo "            Git version: $(git --version)"
 fi
 
 EXIT_CODE_LINTING_ERROR=1
@@ -332,6 +333,7 @@ while true; do
     error_counts=()
     ignore_vars=()
     error_type_index=0
+    [ "${_LCM_DEBUG}" = "true" ] && echo "Error types"
     for error_type in \
         all \
             subject_line_too_short \
@@ -348,6 +350,7 @@ while true; do
             line_count_is_2
     do
         eval "error_${error_type}=${error_type_index}"
+        [ "${_LCM_DEBUG}" = "true" ] && echo "  error_${error_type}=${error_type_index}"
         error_counts[${error_type_index}]=0
         ignore_vars[${error_type_index}]="LCM_IGNORE_$(echo "${error_type}" | tr a-z A-Z)"
         ((error_type_index++))
@@ -355,8 +358,6 @@ while true; do
 
     if [ "${_LCM_DEBUG}" = "true" ]
     then
-        echo "Error types"
-        declare -p ${!error_*} | grep --color=never '^declare --'
         echo "Data structures"
         declare -p error_counts ignore_vars
     fi
