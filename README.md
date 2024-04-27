@@ -9,8 +9,14 @@
 <br/>
 
 `lint-commit-msg` checks that a Git commit message follows
-[a set of formatting and stylistic conventions](https://cbea.ms/git-commit/#seven-rules).
-It is intended to be used in Git `commit-msg` hook.
+[community standard formatting rules](https://cbea.ms/git-commit/#seven-rules).
+
+* a single, self-contained Bash script: no dependencies, no configuration files
+* no need for installation: simply download the script
+* reasonable defaults — yet highly customizable
+* used normally in Git `commit-msg` hook
+
+<br/>
 
 ```
 $ git commit -m "add first version of REST client and instructions how to use it with HTTPS"
@@ -26,7 +32,7 @@ $
 ```
 
 ## Quick start
-1. [Download](https://github.com/laurivan/lint-commit-msg/releases/latest/download/lint-commit-msg) the latest release of the script, make it executable, and put in your `PATH`.
+1. [Download](https://github.com/laurivan/lint-commit-msg/releases/latest/download/lint-commit-msg) the latest release, make it executable, and put in your `PATH`.
 1. Call it in your [commit-msg hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks) like this
    ```
    lint-commit-msg "$1" || exit
@@ -35,6 +41,7 @@ $
    and information about configuration options.
 
 ## Contents
+- [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Basic usage](#basic-usage)
 - [Using in `commit-msg` hook](#using-in-commit-msg-hook)
@@ -46,6 +53,12 @@ $
   - [Running standalone](#running-standalone-outside-commit-msg-hook)
   - [Using inside commit-msg hook](#using-inside-commit-msg-hook)
 - [Tips](#tips)
+
+## Prerequisites
+`lint-commit-msg` requires very few things to work (and you probably already have them installed).
+* Bash version 3 or later
+* minimal set of core utilities like `cp`, `cat`, and `tr`
+* `git` itself
 
 ## Installation
 Download the script and make it executable.
@@ -67,7 +80,7 @@ EOF
 ```
 
 ### Using in `commit-msg` hook
-To lint your commit messages automatically you can call the script in your
+To lint your commit messages automatically you can call `lint-commit-msg` in your
 Git repository's `commit-msg` hook. For this, there are a couple of approaches.
 
 #### Method 1: Add to PATH
@@ -79,7 +92,7 @@ Git repository's `commit-msg` hook. For this, there are a couple of approaches.
    ```sh
    lint-commit-msg "$1" || exit
    ```
-   If the file doesn't exist you can create it and make it executable.
+   If the hook doesn't exist you can create it and make it executable.
    ```sh
    cat > my-repo/.git/hooks/commit-msg <<EOF
    #!/bin/sh
@@ -140,9 +153,9 @@ One can set environment variables either _per invocation_
 LCM_IGNORE_SUBJECT_NOT_CAPITALIZED=true git commit ...
 ```
 or more permanently by exporting variables.
-This can be done for example in the startup files of the user's shell.
+This can be done for example in the commit-msg hook or in the startup files of your shell.
 ```sh
-# ~/.bashrc
+# e.g. ~/.bashrc
 export LCM_INTERACTIVE=never
 export LCM_SUBJECT_LINE_MAX_LENGTH=55
 ```
@@ -157,7 +170,7 @@ See [examples](#examples) for more guidance on how to use them.
 | Environment variable | Description | Default value |
 | ---------------------| ----------- | ------------- |
 | `LCM_INTERACTIVE` | Allow the user to choose interactively whether to ignore the reported errors. Options: `always`, `never`, `auto`. Using `auto` will enable interactive mode if lint-commit-msg is run as part of commit-msg hook AND stdout is terminal. Note that `always` is hardly ever what you want and doesn't play along well when committing from an IDE. | `auto` |
-| `LCM_COLOR` | Whether to use colored output. Options: `always`, `never`, `auto`. With `auto` colors are used if printing to terminal). | `auto` |
+| `LCM_COLOR` | Whether to use colored output. Options: `always`, `never`, `auto`. With `auto` colors are used if printing to terminal. | `auto` |
 
 The variables above will also accept values `true` (alias for `always`) and `false` (alias for `never`).
 
@@ -301,7 +314,7 @@ lint-commit-msg "$1" || exit
 ## Tips
 ### It's okay to ignore errors
 The purpose of lint-commit-msg is to _help you_ make your commit messages more usable;
-not to earn you a medal for achieving 100% error-free linting results.
+not to earn you a medal for 100% error-free commit messages.
 If you think a linting error is a false positive simply ignore it.
 If you think fixing an error reported by lint-commit-msg would not make your message more readable just disregard it.
 
@@ -313,5 +326,5 @@ ERROR: commit message not properly formatted
 - line 1: subject line ends in a period (.)
   Add unit tests for GET, POST, PUT, etc.
 
-Continue anyway? [yes/no] yes
+Continue anyway? [yes/no/edit] yes
 ```
