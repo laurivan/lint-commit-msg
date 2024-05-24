@@ -94,7 +94,7 @@ Git repository's `commit-msg` hook. For this, there are a couple of approaches.
    ```
    If the hook doesn't exist you can create it and make it executable.
    ```sh
-   cat > my-repo/.git/hooks/commit-msg <<EOF
+   cat > my-repo/.git/hooks/commit-msg <<'EOF'
    #!/bin/sh
 
    lint-commit-msg "$1" || exit
@@ -109,7 +109,7 @@ you can add `lint-commit-msg` to your repository and call it using a relative pa
    ```sh
    mkdir my-repo/hooks
    cp lint-commit-msg my-repo/hooks
-   cat > my-repo/hooks/commit-msg <<EOF
+   cat > my-repo/hooks/commit-msg <<'EOF'
    #!/bin/sh
 
    hooks/lint-commit-msg "$1" || exit
