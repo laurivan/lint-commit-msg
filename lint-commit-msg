@@ -31,6 +31,7 @@
 #   in PATH when a commit is made from within an IDE. Not sure if there's anything
 #   else to do about it than mention this in the documentation.
 
+[ "${_LCM_TRACE}" = "true" ] && set -x
 if [ "${_LCM_DEBUG}" = "true" ]
 then
     echo "lint-commit-msg version: @{version information}"
@@ -209,6 +210,8 @@ do
             ;;
         *)
             echo "lint-commit-msg: ERROR: unrecognized configuration variable: ${lcm_var}"
+            [ "${lcm_var}" = "LCM_DEBUG" ] && echo "Did you mean _LCM_DEBUG instead?"
+            [ "${lcm_var}" = "LCM_TRACE" ] && echo "Did you mean _LCM_TRACE instead?"
             invalid_vars=true
           ;;
     esac
