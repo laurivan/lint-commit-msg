@@ -28,6 +28,17 @@ EOF
     # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }
 
+test_uppercase_verb_past_tense() {
+    cat > msg.txt <<EOF
+UPDATED CI pipelines
+EOF
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stderr_contains "- line 1: verb 'UPDATED' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Added'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+}
+
 test_verb_third_person_present() {
     cat > msg.txt <<EOF
 Updates CI pipelines
@@ -39,6 +50,17 @@ EOF
     # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }
 
+test_uppercase_verb_third_person_present() {
+    cat > msg.txt <<EOF
+UPDATES CI pipelines
+EOF
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stderr_contains "- line 1: verb 'UPDATES' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Adds'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+}
+
 test_irregular_verb() {
     cat > msg.txt <<EOF
 Wrote API documentation
@@ -46,6 +68,17 @@ EOF
     call lint-commit-msg msg.txt
     expect_linting_error
     stderr_contains "- line 1: verb 'Wrote' in the subject not in imperative mood,"
+    stderr_contains "use for example 'Add' instead of 'Added'"
+    # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
+}
+
+test_uppercase_irregular_verb() {
+    cat > msg.txt <<EOF
+WROTE API documentation
+EOF
+    call lint-commit-msg msg.txt
+    expect_linting_error
+    stderr_contains "- line 1: verb 'WROTE' in the subject not in imperative mood,"
     stderr_contains "use for example 'Add' instead of 'Added'"
     # stderr_contains_regex "^  LCM_IGNORE_SUBJECT_MOOD$"
 }

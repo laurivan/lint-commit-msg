@@ -355,7 +355,7 @@ while true; do
         eval "error_${error_type}=${error_type_index}"
         [ "${_LCM_DEBUG}" = "true" ] && echo "  error_${error_type}=${error_type_index}"
         error_counts[${error_type_index}]=0
-        ignore_vars[${error_type_index}]="LCM_IGNORE_$(echo "${error_type}" | tr a-z A-Z)"
+        ignore_vars[${error_type_index}]="LCM_IGNORE_$(echo "${error_type}" | tr '[:lower:]' '[:upper:]')"
         ((error_type_index++))
     done
 
@@ -516,6 +516,7 @@ while true; do
             case "${BASH_REMATCH[0]}" in
                 ed|ing)
                     invalid_suffix="${BASH_REMATCH[0]}"
+                    invalid_suffix=$(printf "%s" "${invalid_suffix}" | tr '[:upper:]' '[:lower:]')
                     ;;
                 [^s]s)
                     # This special handling is needed to not flag verbs that end in 's'
