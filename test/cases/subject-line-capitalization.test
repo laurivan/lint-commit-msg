@@ -72,3 +72,14 @@ EOF
     call lint-commit-msg msg.txt
     expect_success
 }
+
+test_capitalized_with_nocasematch() {
+    cat > msg.txt <<EOF
+Start with an uppercase letter
+EOF
+    shopt -s nocasematch
+    export BASHOPTS
+
+    call lint-commit-msg msg.txt
+    expect_success
+}

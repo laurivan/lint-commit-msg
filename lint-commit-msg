@@ -499,6 +499,7 @@ while true; do
         # errors that only confuse the user.
 
         # Capitalization check
+        shopt -u nocasematch
         [[ ${subject} =~ ^[[:lower:]] ]] &&
             append_error \
                 "${error_subject_not_capitalized}" \
