@@ -309,7 +309,14 @@ while true; do
         unset "${!GIT@}"
 
         cd "${tmp_dir}" || exit
-        git init --initial-branch=main --quiet repo || exit
+
+        # This is needed... otherwise we get
+        #   warning: re-init: ignored --initial-branch=main
+        # when editing the commit message the second time.
+        if ! [ -d repo ]
+        then
+            git init --initial-branch=main --quiet repo || exit
+        fi
         cd repo || exit
         git -c "user.name=John Doe" -c "user.email=john.doe@example.com" \
             commit --quiet --allow-empty --allow-empty-message \
