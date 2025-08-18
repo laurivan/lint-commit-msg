@@ -15,7 +15,7 @@ on:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 1
+    timeout-minutes: 2
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
