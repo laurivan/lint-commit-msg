@@ -245,7 +245,7 @@ lint-commit-message msg.txt && git commit --file msg.txt
 # The same as above but wrapped in a shell function
 lintedcommit() {
    local msg_file="$1"; shift
-   lint-commit-message "${msg_file}" && commit --file "${msg_file}" "$@"
+   lint-commit-message "${msg_file}" && git commit --file "${msg_file}" "$@"
 }
 lintedcommit msg.txt
 
